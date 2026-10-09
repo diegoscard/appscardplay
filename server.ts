@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import { createServer as createViteServer } from 'vite';
 import http from 'http';
 import https from 'https';
 import path from 'path';
@@ -12,6 +11,14 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Normalize URL in case Vercel rewrites stripped the /api prefix
+app.use((req, _res, next) => {
+  if (req.url && !req.url.startsWith('/api') && (req.url.startsWith('/proxy') || req.url.startsWith('/xtream'))) {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
 
 // Helper function to fetch URL following redirects
 function fetchWithRedirect(
@@ -655,6 +662,7 @@ async function startServer() {
   const isDev = process.env.NODE_ENV !== 'production';
 
   if (isDev) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: false },
       appType: 'spa',
@@ -672,4 +680,11 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+// Export Express app for Vercel Serverless Functions
+export { app };
+export default app;
+
+// Only start standalone HTTP server when not in Vercel serverless environment
+if (!process.env.VERCEL) {
+  startServer().catch(console.error);
+}

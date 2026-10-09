@@ -334,9 +334,32 @@ export default function App() {
         }),
       });
 
-      const data = await response.json();
+      let data: any = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+      }
 
-      if (!response.ok || !data.success) {
+      if (!response.ok || !data?.success) {
+        // Check if deployment returned HTML (e.g. Vercel 404 / 504)
+        if (!data) {
+          const rawText = await response.text().catch(() => '');
+          if (response.status === 404 || rawText.includes('The page could not be found')) {
+            throw new Error(
+              'O servidor de API (/api) retornou 404. Certifique-se de fazer commit e push dos arquivos vercel.json e api/index.ts para o repositório do GitHub.'
+            );
+          }
+          if (response.status === 504 || rawText.includes('FUNCTION_INVOCATION_TIMEOUT')) {
+            throw new Error(
+              'Tempo de resposta excedido no servidor de nuvem. Tente conectar novamente.'
+            );
+          }
+        }
+
         // Automatic fallback: directly load and parse the M3U playlist
         const proxyUrl = `/api/proxy/playlist?url=${encodeURIComponent(computedM3uUrl)}`;
         const m3uRes = await fetch(proxyUrl).catch(() => null);
@@ -348,7 +371,7 @@ export default function App() {
             return;
           }
         }
-        throw new Error(data?.error || 'Credenciais inválidas ou conta inativa.');
+        throw new Error(data?.error || `Falha na autenticação (Status ${response.status}). Verifique seu usuário e senha.`);
       }
 
       // Successfully authenticated & fetched all channels, movies and series!
