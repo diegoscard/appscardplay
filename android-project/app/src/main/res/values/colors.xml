@@ -1,0 +1,11 @@
+<resources>
+    <color name="brand_primary">#00E5FF</color>
+    <color name="brand_secondary">#7C4DFF</color>
+    <color name="brand_dark">#0A0E17</color>
+    <color name="surface_dark">#121824</color>
+    <color name="card_dark">#1A2234</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="focus_ring">#38BDF8</color>
+    <color name="error_red">#EF4444</color>
+</resources>

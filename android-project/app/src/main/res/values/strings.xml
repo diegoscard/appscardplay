@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">SCARD PLAY IPTV</string>
+    <string name="app_subtitle">IPTV PLAYER</string>
+    <string name="setup_title">Configure sua fonte de conteúdo</string>
+    <string name="setup_subtitle">Insira uma URL de playlist M3U autorizada para iniciar</string>
+    <string name="connect">CONECTAR</string>
+    <string name="refresh_playlist">ATUALIZAR LISTA</string>
+    <string name="save_playlist">Salvar playlist localmente</string>
+    <string name="playlist_name_hint">Nome da Lista (ex: Minha Lista)</string>
+    <string name="playlist_url_hint">URL da playlist M3U / M3U8 (ex: https://...)</string>
+    <string name="playback_error">Não foi possível reproduzir este canal.</string>
+    <string name="retry">TENTAR NOVAMENTE</string>
+    <string name="next_channel">PRÓXIMO CANAL</string>
+    <string name="back">VOLTAR</string>
+    <string name="loading">CARREGANDO...</string>
+    <string name="category_all">TODOS</string>
+    <string name="category_favorites">FAVORITOS</string>
+    <string name="category_recent">CONTINUAR ASSISTINDO</string>
+    <string name="category_others">OUTROS</string>
+</resources>

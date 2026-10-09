@@ -1,0 +1,6 @@
+{
+  "name": "SCARD PLAY IPTV",
+  "description": "Player de televisão IPTV para Android TV e Google TV com interface otimizada para controle remoto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
