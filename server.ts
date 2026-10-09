@@ -452,14 +452,14 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
         })
       : [];
 
-    // Map Movies (VOD)
+    // Map Movies (VOD) - Carregar todos os conteúdos sem limitação
     const seenMovieIds = new Set<string>();
     const movies = Array.isArray(vodStreamsJson)
-      ? vodStreamsJson.slice(0, 150).map((m: any, idx: number) => {
+      ? vodStreamsJson.map((m: any, idx: number) => {
           const rawExt = (m.container_extension || '').toLowerCase().trim();
           const ext = rawExt && rawExt !== 'mkv' && rawExt !== 'avi' ? rawExt : 'mp4';
           const rawStreamUrl = `${streamBase}/movie/${username}/${password}/${m.stream_id}.${ext}`;
-          const catName = vodCategoryMap[String(m.category_id)] || 'Lançamentos (2026)';
+          const catName = vodCategoryMap[String(m.category_id)] || 'Filmes';
           let movieId = m.stream_id != null ? `vod_${m.stream_id}` : `vod_${idx}`;
           if (seenMovieIds.has(movieId)) {
             movieId = `${movieId}_${idx}`;
@@ -481,10 +481,10 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
         })
       : [];
 
-    // Map Series
+    // Map Series - Carregar todas as séries sem limitação
     const seenSeriesIds = new Set<string>();
     const series = Array.isArray(seriesStreamsJson)
-      ? seriesStreamsJson.slice(0, 100).map((s: any, idx: number) => {
+      ? seriesStreamsJson.map((s: any, idx: number) => {
           const catName = seriesCategoryMap[String(s.category_id)] || 'Séries';
           let seriesId = s.series_id != null ? `series_${s.series_id}` : `series_${idx}`;
           if (seenSeriesIds.has(seriesId)) {

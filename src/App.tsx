@@ -385,7 +385,14 @@ export default function App() {
 
       if (uniqueMovies.length > 0) {
         setMovies(uniqueMovies);
-        localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies));
+        try {
+          localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies));
+        } catch {
+          // If browser localStorage quota (5MB) is reached for thousands of movies, cache top 1000
+          try {
+            localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies.slice(0, 1000)));
+          } catch {}
+        }
       }
       if (data.movieCategories && data.movieCategories.length > 0) {
         setMovieCategories(data.movieCategories);
@@ -393,10 +400,14 @@ export default function App() {
 
       if (uniqueSeries.length > 0) {
         setSeries(uniqueSeries);
-        localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries));
-      }
-      if (data.seriesCategories && data.seriesCategories.length > 0) {
-        setSeriesCategories(data.seriesCategories);
+        try {
+          localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries));
+        } catch {
+          // If browser localStorage quota (5MB) is reached for thousands of series, cache top 1000
+          try {
+            localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries.slice(0, 1000)));
+          } catch {}
+        }
       }
 
       const info: PlaylistInfo = {
@@ -896,11 +907,11 @@ export default function App() {
     <div className="w-screen h-screen bg-[#080407] text-neutral-100 flex flex-col overflow-hidden font-['Outfit'] select-none">
       {/* Top Header & Navigation Bar with Brand Identity and Menus */}
       {currentScreen !== 'splash' && currentScreen !== 'player' && currentScreen !== 'home' && (
-        <header className="bg-gradient-to-r from-[#0c0408] via-[#14060d] to-[#0c0408] border-b border-neutral-800/80 px-4 md:px-8 py-2.5 flex items-center justify-between text-xs shrink-0 z-30 shadow-xl shadow-black/60">
-          {/* Brand Logo & Title */}
+        <header className="relative bg-gradient-to-r from-[#0c0408] via-[#14060d] to-[#0c0408] border-b border-neutral-800/80 px-4 md:px-8 py-2.5 flex items-center justify-between text-xs shrink-0 z-30 shadow-xl shadow-black/60">
+          {/* Brand Logo & Title on the left */}
           <div
             onClick={() => setCurrentScreen('home')}
-            className="flex items-center gap-3 cursor-pointer group shrink-0"
+            className="flex items-center gap-3 cursor-pointer group shrink-0 z-20"
             title="SCARD PLAY - Ir para o Início"
           >
             <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-[#1c0a15] border-2 border-red-600/60 p-1 flex items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.4)] group-hover:scale-105 transition">
@@ -919,64 +930,102 @@ export default function App() {
             </div>
           </div>
 
-          {/* Menus Principais de Navegação (Top Nav Menu) */}
-          <nav className="flex items-center gap-1 sm:gap-1.5 bg-[#14070f]/90 border border-neutral-800/90 p-1 rounded-2xl shadow-inner overflow-x-auto">
-            <HeaderNavTab
-              icon={<Home className="w-4 h-4" />}
-              label="Início"
-              active={false}
-              onClick={() => setCurrentScreen('home')}
-            />
-            <HeaderNavTab
-              icon={<Tv className="w-4 h-4" />}
-              label="TV ao Vivo"
-              badge={channels.length > 0 ? `${channels.length}` : undefined}
-              active={currentScreen === 'livetv'}
-              onClick={() => setCurrentScreen('livetv')}
-            />
-            <HeaderNavTab
-              icon={<Film className="w-4 h-4" />}
-              label="Filmes"
-              badge={movies.length > 0 ? `${movies.length}` : undefined}
-              active={currentScreen === 'movies'}
-              onClick={() => setCurrentScreen('movies')}
-            />
-            <HeaderNavTab
-              icon={<Layers className="w-4 h-4" />}
-              label="Séries"
-              badge={series.length > 0 ? `${series.length}` : undefined}
-              active={currentScreen === 'series'}
-              onClick={() => setCurrentScreen('series')}
-            />
-            <HeaderNavTab
-              icon={<Star className="w-4 h-4" />}
-              label="Favoritos"
-              badge={favorites.length > 0 ? `${favorites.length}` : undefined}
-              active={currentScreen === 'livetv' && selectedCategory === 'FAVORITOS'}
-              onClick={() => {
-                setSelectedCategory('FAVORITOS');
-                setCurrentScreen('livetv');
-              }}
-            />
-            <HeaderNavTab
-              icon={<History className="w-4 h-4" />}
-              label="Histórico"
-              active={currentScreen === 'livetv' && selectedCategory === 'CONTINUAR ASSISTINDO'}
-              onClick={() => {
-                setSelectedCategory('CONTINUAR ASSISTINDO');
-                setCurrentScreen('livetv');
-              }}
-            />
-            <HeaderNavTab
-              icon={<Settings className="w-4 h-4" />}
-              label="Ajustes"
-              active={currentScreen === 'settings'}
-              onClick={() => setCurrentScreen('settings')}
-            />
-          </nav>
+          {/* Menus Principais de Navegação - Perfeitamente Centralizado com o Conteúdo Principal de Baixo */}
+          <div className="hidden md:flex absolute inset-x-0 mx-auto items-center justify-center pointer-events-none z-10">
+            <nav className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 bg-[#14070f]/95 border border-neutral-800/90 p-1 rounded-2xl shadow-inner max-w-[calc(100vw-360px)] overflow-x-auto">
+              <HeaderNavTab
+                icon={<Home className="w-4 h-4" />}
+                label="Início"
+                active={false}
+                onClick={() => setCurrentScreen('home')}
+              />
+              <HeaderNavTab
+                icon={<Tv className="w-4 h-4" />}
+                label="TV ao Vivo"
+                badge={channels.length > 0 ? `${channels.length}` : undefined}
+                active={currentScreen === 'livetv'}
+                onClick={() => setCurrentScreen('livetv')}
+              />
+              <HeaderNavTab
+                icon={<Film className="w-4 h-4" />}
+                label="Filmes"
+                badge={movies.length > 0 ? `${movies.length}` : undefined}
+                active={currentScreen === 'movies'}
+                onClick={() => setCurrentScreen('movies')}
+              />
+              <HeaderNavTab
+                icon={<Layers className="w-4 h-4" />}
+                label="Séries"
+                badge={series.length > 0 ? `${series.length}` : undefined}
+                active={currentScreen === 'series'}
+                onClick={() => setCurrentScreen('series')}
+              />
+              <HeaderNavTab
+                icon={<Star className="w-4 h-4" />}
+                label="Favoritos"
+                badge={favorites.length > 0 ? `${favorites.length}` : undefined}
+                active={currentScreen === 'livetv' && selectedCategory === 'FAVORITOS'}
+                onClick={() => {
+                  setSelectedCategory('FAVORITOS');
+                  setCurrentScreen('livetv');
+                }}
+              />
+              <HeaderNavTab
+                icon={<History className="w-4 h-4" />}
+                label="Histórico"
+                active={currentScreen === 'livetv' && selectedCategory === 'CONTINUAR ASSISTINDO'}
+                onClick={() => {
+                  setSelectedCategory('CONTINUAR ASSISTINDO');
+                  setCurrentScreen('livetv');
+                }}
+              />
+              <HeaderNavTab
+                icon={<Settings className="w-4 h-4" />}
+                label="Ajustes"
+                active={currentScreen === 'settings'}
+                onClick={() => setCurrentScreen('settings')}
+              />
+            </nav>
+          </div>
 
-          {/* Clean spacer */}
-          <div className="w-2" />
+          {/* Menus para telas menores (mobile / tablet compacto) */}
+          <div className="flex md:hidden items-center overflow-x-auto z-10 ml-2">
+            <nav className="flex items-center gap-1 bg-[#14070f]/90 border border-neutral-800/90 p-1 rounded-2xl shadow-inner overflow-x-auto">
+              <HeaderNavTab
+                icon={<Home className="w-4 h-4" />}
+                label="Início"
+                active={false}
+                onClick={() => setCurrentScreen('home')}
+              />
+              <HeaderNavTab
+                icon={<Tv className="w-4 h-4" />}
+                label="TV"
+                active={currentScreen === 'livetv'}
+                onClick={() => setCurrentScreen('livetv')}
+              />
+              <HeaderNavTab
+                icon={<Film className="w-4 h-4" />}
+                label="Filmes"
+                active={currentScreen === 'movies'}
+                onClick={() => setCurrentScreen('movies')}
+              />
+              <HeaderNavTab
+                icon={<Layers className="w-4 h-4" />}
+                label="Séries"
+                active={currentScreen === 'series'}
+                onClick={() => setCurrentScreen('series')}
+              />
+              <HeaderNavTab
+                icon={<Settings className="w-4 h-4" />}
+                label="Ajustes"
+                active={currentScreen === 'settings'}
+                onClick={() => setCurrentScreen('settings')}
+              />
+            </nav>
+          </div>
+
+          {/* Clean spacer on the right to preserve flex balance */}
+          <div className="w-2 md:w-10 shrink-0" />
         </header>
       )}
 

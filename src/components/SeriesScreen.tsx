@@ -39,6 +39,7 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
   const [episodesLoading, setEpisodesLoading] = useState(false);
   const [episodesData, setEpisodesData] = useState<Record<string, any[]> | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<string>('1');
+  const [displayLimit, setDisplayLimit] = useState(60);
 
   const filteredSeries = useMemo(() => {
     return series.filter((s) => {
@@ -51,6 +52,15 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
       return matchCat && matchSearch;
     });
   }, [series, selectedCategory, searchQuery]);
+
+  // Reset display limit when category or search changes
+  React.useEffect(() => {
+    setDisplayLimit(60);
+  }, [selectedCategory, searchQuery]);
+
+  const displayedSeries = useMemo(() => {
+    return filteredSeries.slice(0, displayLimit);
+  }, [filteredSeries, displayLimit]);
 
   const heroSeries = useMemo(() => {
     return filteredSeries[0] || series[0] || null;
@@ -251,7 +261,7 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
             </h2>
           </div>
           <span className="text-xs text-neutral-500 font-medium">
-            Selecione uma série para ver os episódios
+            Exibindo {displayedSeries.length} de {filteredSeries.length} • Selecione uma série para ver os episódios
           </span>
         </div>
 
@@ -265,56 +275,71 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-5">
-            {filteredSeries.map((s, idx) => (
-              <div
-                key={`${s.id}_${idx}`}
-                onClick={() => handleOpenSeries(s)}
-                className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
-              >
-                {s.posterUrl ? (
-                  <img
-                    src={s.posterUrl}
-                    alt={s.name}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 to-neutral-950 flex flex-col items-center justify-center p-3 text-center">
-                    <Tv className="w-8 h-8 text-red-500 mb-2 opacity-60" />
-                    <span className="text-[11px] font-bold text-neutral-300 line-clamp-3">
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-5">
+              {displayedSeries.map((s, idx) => (
+                <div
+                  key={`${s.id}_${idx}`}
+                  onClick={() => handleOpenSeries(s)}
+                  className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
+                >
+                  {s.posterUrl ? (
+                    <img
+                      src={s.posterUrl}
+                      alt={s.name}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 to-neutral-950 flex flex-col items-center justify-center p-3 text-center">
+                      <Tv className="w-8 h-8 text-red-500 mb-2 opacity-60" />
+                      <span className="text-[11px] font-bold text-neutral-300 line-clamp-3">
+                        {s.name}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
+
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+                    {s.rating ? (
+                      <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-amber-400 font-black text-[10px] flex items-center gap-0.5 border border-amber-400/30">
+                        <Star className="w-2.5 h-2.5 fill-amber-400" />
+                        {s.rating}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="relative z-10 space-y-1">
+                    <h3 className="text-xs font-black text-white line-clamp-2 group-hover:text-amber-300 transition-colors">
                       {s.name}
-                    </span>
-                  </div>
-                )}
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
-
-                <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
-                  {s.rating ? (
-                    <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-amber-400 font-black text-[10px] flex items-center gap-0.5 border border-amber-400/30">
-                      <Star className="w-2.5 h-2.5 fill-amber-400" />
-                      {s.rating}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="relative z-10 space-y-1">
-                  <h3 className="text-xs font-black text-white line-clamp-2 group-hover:text-amber-300 transition-colors">
-                    {s.name}
-                  </h3>
-                  <div className="flex items-center justify-between text-[10px] text-neutral-400 font-medium">
-                    <span>{s.category}</span>
-                    <button
-                      className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
-                      title="Episódios"
-                    >
-                      <Play className="w-3 h-3 fill-white" />
-                    </button>
+                    </h3>
+                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-medium">
+                      <span>{s.category}</span>
+                      <button
+                        className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
+                        title="Episódios"
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {displayedSeries.length < filteredSeries.length && (
+              <div className="flex justify-center pb-6">
+                <button
+                  onClick={() => setDisplayLimit((prev) => prev + 60)}
+                  className="px-8 py-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 hover:border-red-500 text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95 flex items-center gap-2"
+                >
+                  <span>Carregar Mais Séries (+60)</span>
+                  <span className="text-red-400">• Exibindo {displayedSeries.length} de {filteredSeries.length}</span>
+                </button>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

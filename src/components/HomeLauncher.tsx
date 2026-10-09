@@ -1,4 +1,5 @@
 import React from 'react';
+import { User, Calendar } from 'lucide-react';
 import {
   LiveTvLauncherIcon,
   MoviesLauncherIcon,
@@ -30,15 +31,16 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
   channelsCount,
   moviesCount,
   seriesCount,
+  accountInfo,
   focusedCardIndex,
   setFocusedCardIndex,
   onNavigate,
 }) => {
-  // Main 4 TV Tiles (TV ao Vivo, Filmes, Séries, Configurações)
+  // Main 4 TV Tiles (Ao Vivo, Filmes, Séries, Configurações)
   const tiles = [
     {
       id: 'livetv',
-      title: 'TV ao Vivo',
+      title: 'Ao Vivo',
       subtext: `${channelsCount > 0 ? channelsCount.toLocaleString('pt-BR') : '0'} canais`,
       destination: 'livetv' as const,
       icon: (isFocused: boolean) => <LiveTvLauncherIcon isFocused={isFocused} />,
@@ -46,14 +48,14 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
     {
       id: 'movies',
       title: 'Filmes',
-      subtext: `${moviesCount > 0 ? moviesCount : '0'} filmes VOD`,
+      subtext: `${moviesCount > 0 ? moviesCount.toLocaleString('pt-BR') : '0'} filmes VOD`,
       destination: 'movies' as const,
       icon: (isFocused: boolean) => <MoviesLauncherIcon isFocused={isFocused} />,
     },
     {
       id: 'series',
       title: 'Séries',
-      subtext: `${seriesCount > 0 ? seriesCount : '0'} séries VOD`,
+      subtext: `${seriesCount > 0 ? seriesCount.toLocaleString('pt-BR') : '0'} séries VOD`,
       destination: 'series' as const,
       icon: (isFocused: boolean) => <SeriesLauncherIcon isFocused={isFocused} />,
     },
@@ -87,7 +89,7 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-[#060104] via-transparent to-[#080205]/90" />
       </div>
 
-      {/* Main Center Stage: 3D Logo & The 5 Big Action Cards */}
+      {/* Main Center Stage: 3D Logo & The 4 Big Action Cards */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
         {/* Brand Title */}
         <div className="flex flex-col items-center text-center mb-8 md:mb-10">
@@ -117,7 +119,7 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
               >
                 {/* Square TV Card Container */}
                 <div
-                  className={`relative w-full aspect-square max-w-[190px] rounded-3xl p-6 flex flex-col items-center justify-center transition-all duration-300 backdrop-blur-md ${
+                  className={`relative w-full aspect-square max-w-[140px] rounded-3xl p-6 flex flex-col items-center justify-center transition-all duration-300 backdrop-blur-md ${
                     isFocused
                       ? 'bg-gradient-to-b from-[#2a0e17] via-[#1c0810] to-[#120409] border-2 border-red-500 shadow-[0_0_35px_rgba(220,38,38,0.6)]'
                       : 'bg-[#15070e]/80 hover:bg-[#200b16]/90 border-2 border-neutral-800 hover:border-red-500/50 shadow-lg'
@@ -155,6 +157,49 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
           })}
         </div>
       </main>
+
+      {/* Footer Bottom Bar with Logged In User (Left) and Expiration Date (Right) matching screenshot */}
+      <footer className="relative z-20 w-full px-6 md:px-12 pb-6 md:pb-8 flex items-center justify-between text-xs pointer-events-auto">
+        {/* Bottom Left: Usuário Logado */}
+        <div className="flex items-center gap-3 bg-[#14060e]/85 hover:bg-[#1a0813] border border-neutral-800/80 hover:border-red-500/40 rounded-2xl px-4 py-2.5 backdrop-blur-md shadow-xl transition">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white shadow-md shadow-red-600/30">
+            <User className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+              Usuário Conectado
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-black text-white text-sm tracking-wide">
+                {accountInfo?.username || 'Desconectado'}
+              </span>
+              {accountInfo?.username && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {accountInfo.status || 'Ativo'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Right: Data de Vencimento */}
+        <div className="flex items-center gap-3 bg-[#14060e]/85 hover:bg-[#1a0813] border border-neutral-800/80 hover:border-red-500/40 rounded-2xl px-4 py-2.5 backdrop-blur-md shadow-xl transition">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-white shadow-md shadow-amber-600/30">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col text-right">
+            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+              Data de Vencimento
+            </span>
+            <div className="flex items-center justify-end gap-1.5">
+              <span className="font-black text-amber-300 text-sm tracking-wide font-mono">
+                {accountInfo?.expirationDate || 'Ilimitado'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
