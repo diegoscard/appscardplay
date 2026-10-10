@@ -1398,7 +1398,7 @@ export default function App() {
                         </div>
                         <h3 className="text-2xl font-black text-white mb-2">Nenhum Usuário Conectado</h3>
                         <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-                          Conecte uma playlist ou faça login com seu usuário IPTV para visualizar as categorias e assistir aos canais de TV ao vivo.
+                          Conecte uma playlist ou faça login com seu usuário IPTV para visualizar as categorias e assistir aos canais ao vivo.
                         </p>
                         <button
                           onClick={() => setCurrentScreen('setup')}

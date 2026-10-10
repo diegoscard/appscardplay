@@ -743,13 +743,13 @@ export const TvVideoPlayer: React.FC<TvVideoPlayerProps> = ({
         </div>
       </div>
 
-      {/* Side Channel Drawer (TV AO VIVO) */}
+      {/* Side Channel Drawer (AO VIVO) */}
       {isSideDrawerOpen && (
         <div className="absolute top-0 left-0 bottom-0 w-80 md:w-96 bg-[#0c050a]/95 border-r border-neutral-800 z-40 backdrop-blur-xl flex flex-col animate-in slide-in-from-left duration-200 shadow-2xl">
           <div className="p-5 border-b border-neutral-800 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
-              <h2 className="text-lg font-black tracking-wider text-white">TV AO VIVO</h2>
+              <h2 className="text-lg font-black tracking-wider text-white">AO VIVO</h2>
             </div>
             <span className="text-xs font-bold text-neutral-400 bg-neutral-900 px-2.5 py-1 rounded-full border border-neutral-800">
               {channels.length} canais
