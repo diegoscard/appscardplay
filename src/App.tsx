@@ -552,7 +552,7 @@ export default function App() {
         console.error(e);
       }
 
-      // No logged in user found: start clean and show IPTV setup/login screen
+      // No logged in user found: start clean on Home screen
       setChannels([]);
       setCategories([]);
       setMovies([]);
@@ -561,10 +561,7 @@ export default function App() {
       setAccountInfo(null);
       setLoginUser('');
       setLoginPass('');
-      setCurrentScreen('setup');
-
-      // Fallback: show setup screen
-      setCurrentScreen('setup');
+      setCurrentScreen('home');
     }, 1200);
 
     return () => clearTimeout(timer);
@@ -1534,7 +1531,7 @@ export default function App() {
                       {isUserConnected ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-white">
-                            SCARD PLAY ({loginUser || accountInfo?.username || 'rachelalcantara2'})
+                            SCARD PLAY ({loginUser || accountInfo?.username || 'Conectado'})
                           </span>
                           <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
