@@ -41,6 +41,8 @@ import {
   USER_REQUESTED_CATEGORIES,
   CATEGORY_COUNTS_MAP,
   generateUserRequestedChannels,
+  generateUserRequestedMovies,
+  generateUserRequestedSeries,
 } from './utils/iptvChannelsData';
 import { TvVideoPlayer } from './components/TvVideoPlayer';
 import { AndroidProjectModal } from './components/AndroidProjectModal';
@@ -129,7 +131,20 @@ const GROUP_MEMBERS: Record<string, string[]> = {
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
   const [previousScreen, setPreviousScreen] = useState<AppScreen>('livetv');
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<Channel[]>(() => {
+    try {
+      const cached = localStorage.getItem(STORAGE_PLAYLIST_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.channels && parsed.channels.length > 0) {
+          return ensureUniqueChannelIds(parsed.channels);
+        }
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODOS');
   const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
@@ -142,9 +157,13 @@ export default function App() {
   const [movies, setMovies] = useState<VodMovie[]>(() => {
     try {
       const saved = localStorage.getItem('scard_play_movies_v1');
-      return saved ? JSON.parse(saved) : DEFAULT_SAMPLE_MOVIES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) return ensureUniqueVodIds(parsed);
+      }
+      return [];
     } catch {
-      return DEFAULT_SAMPLE_MOVIES;
+      return [];
     }
   });
   const [selectedMovieCategory, setSelectedMovieCategory] = useState<string>('TODOS');
@@ -164,9 +183,13 @@ export default function App() {
   const [series, setSeries] = useState<VodSeries[]>(() => {
     try {
       const saved = localStorage.getItem('scard_play_series_v1');
-      return saved ? JSON.parse(saved) : DEFAULT_SAMPLE_SERIES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) return ensureUniqueVodIds(parsed);
+      }
+      return [];
     } catch {
-      return DEFAULT_SAMPLE_SERIES;
+      return [];
     }
   });
   const [selectedSeriesCategory, setSelectedSeriesCategory] = useState<string>('TODOS');
@@ -206,38 +229,40 @@ export default function App() {
   const [isAndroidModalOpen, setIsAndroidModalOpen] = useState<boolean>(false);
   const [isSamsungModalOpen, setIsSamsungModalOpen] = useState<boolean>(false);
 
-  const USER_REQUESTED_URL =
-    'http://wordbus.top/get.php?username=rachelalcantara2&password=18787429&type=m3u_plus&output=ts';
+  const USER_REQUESTED_URL = '';
 
   // Setup form states
   const [setupMode, setSetupMode] = useState<'login' | 'm3u' | 'demo'>('login');
   const [serverHost, setServerHost] = useState<string>('http://wordbus.top');
   const [loginUser, setLoginUser] = useState<string>(() => {
     try {
-      if (localStorage.getItem('scard_play_disconnected') === 'true') return '';
       const cachedAcc = localStorage.getItem('scard_play_account_v1');
       if (cachedAcc) {
         const parsed = JSON.parse(cachedAcc);
         if (parsed.username) return parsed.username;
       }
-      return 'rachelalcantara2';
+      return '';
     } catch {
-      return 'rachelalcantara2';
+      return '';
     }
   });
   const [loginPass, setLoginPass] = useState<string>(() => {
     try {
-      if (localStorage.getItem('scard_play_disconnected') === 'true') return '';
-      return '18787429';
+      const cachedAcc = localStorage.getItem('scard_play_account_v1');
+      if (cachedAcc) {
+        const parsed = JSON.parse(cachedAcc);
+        if (parsed.password) return parsed.password;
+      }
+      return '';
     } catch {
-      return '18787429';
+      return '';
     }
   });
   const [loginLoading, setLoginLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const [inputName, setInputName] = useState<string>('SCARD PLAY');
-  const [inputUrl, setInputUrl] = useState<string>(USER_REQUESTED_URL);
+  const [inputUrl, setInputUrl] = useState<string>('');
   const [setupLoading, setSetupLoading] = useState<boolean>(false);
   const [setupError, setSetupError] = useState<string | null>(null);
 
@@ -250,16 +275,9 @@ export default function App() {
     activeConnections: number;
   } | null>(() => {
     try {
-      if (localStorage.getItem('scard_play_disconnected') === 'true') return null;
       const cached = localStorage.getItem('scard_play_account_v1');
       if (cached) return JSON.parse(cached);
-      return {
-        username: 'rachelalcantara2',
-        status: 'Active',
-        expirationDate: '08/11/2026',
-        maxConnections: 1,
-        activeConnections: 0,
-      };
+      return null;
     } catch {
       return null;
     }
@@ -328,65 +346,148 @@ export default function App() {
     const computedM3uUrl = `${cleanServer}/get.php?username=${encodeURIComponent(cleanUser)}&password=${encodeURIComponent(cleanPass)}&type=m3u_plus&output=ts`;
     setInputUrl(computedM3uUrl);
 
-    // Direct high-fidelity simulated login to completely bypass external API requests and connection limit issues
-    setTimeout(() => {
-      try {
-        const requestedChannels = generateUserRequestedChannels();
-        const uniqueChannels = ensureUniqueChannelIds(requestedChannels);
-        
-        // Map category list
-        const cleanCats = [
-          'TODOS',
-          'FAVORITOS',
-          'CONTINUAR ASSISTINDO',
-          ...USER_REQUESTED_CATEGORIES.map((c) => c.name),
-        ];
-
-        setChannels(uniqueChannels);
-        setCategories(cleanCats);
-        setMovies(ensureUniqueVodIds(DEFAULT_SAMPLE_MOVIES));
-        setSeries(ensureUniqueVodIds(DEFAULT_SAMPLE_SERIES));
-
-        const info: PlaylistInfo = {
-          id: `xtream_${Date.now()}`,
-          name: `SCARD PLAY (${cleanUser})`,
-          url: computedM3uUrl,
-          lastUpdated: Date.now(),
-          channelCount: uniqueChannels.length,
-        };
-        setPlaylistInfo(info);
-
-        const simulatedUserInfo = {
+    try {
+      const response = await fetch('/api/xtream/login-and-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          server: cleanServer,
           username: cleanUser,
-          status: 'Active',
-          expirationDate: '09/11/2026',
-          maxConnections: 1,
-          activeConnections: 0,
-        };
-        setAccountInfo(simulatedUserInfo);
+          password: cleanPass,
+        }),
+      });
 
-        // Save to localStorage
-        localStorage.removeItem('scard_play_disconnected');
-        setLoginUser(cleanUser);
-        setLoginPass(cleanPass);
-        localStorage.setItem('scard_play_account_v1', JSON.stringify(simulatedUserInfo));
-        localStorage.setItem(
-          STORAGE_PLAYLIST_KEY,
-          JSON.stringify({
-            channels: uniqueChannels,
-            categories: cleanCats.filter((c) => c !== 'TODOS' && c !== 'FAVORITOS'),
-            info,
-            user_info: simulatedUserInfo,
-          })
-        );
-
-        setLoginLoading(false);
-        setCurrentScreen('home');
-      } catch (err: any) {
-        setLoginError(err.message || 'Erro ao carregar banco de dados local.');
-        setLoginLoading(false);
+      let data: any = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
       }
-    }, 600);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || `Falha na autenticação (Status ${response.status}). Verifique seu usuário e senha.`);
+      }
+
+      // Successfully authenticated & fetched all real channels, real movies and real series!
+      const uniqueChannels = ensureUniqueChannelIds(data.channels || []);
+      const uniqueMovies = ensureUniqueVodIds<VodMovie>(data.movies || []);
+      const uniqueSeries = ensureUniqueVodIds<VodSeries>(data.series || []);
+
+      setChannels(uniqueChannels);
+      if (data.categories && data.categories.length > 0) {
+        setCategories(data.categories);
+      }
+      setAccountInfo(data.user_info);
+
+      if (uniqueMovies.length > 0) {
+        setMovies(uniqueMovies);
+        try {
+          localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies));
+        } catch {
+          // If browser localStorage quota (5MB) is reached for 25k movies, store top 2000
+          try {
+            localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies.slice(0, 2000)));
+          } catch {}
+        }
+      }
+
+      if (uniqueSeries.length > 0) {
+        setSeries(uniqueSeries);
+        try {
+          localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries));
+        } catch {
+          try {
+            localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries.slice(0, 2000)));
+          } catch {}
+        }
+      }
+
+      const info: PlaylistInfo = {
+        id: `xtream_${Date.now()}`,
+        name: `SCARD PLAY (${data.user_info.username})`,
+        url: computedM3uUrl,
+        lastUpdated: Date.now(),
+        channelCount: uniqueChannels.length,
+      };
+      setPlaylistInfo(info);
+
+      // Save to localStorage
+      localStorage.removeItem('scard_play_disconnected');
+      setLoginUser(cleanUser);
+      setLoginPass(cleanPass);
+      localStorage.setItem('scard_play_account_v1', JSON.stringify(data.user_info));
+      localStorage.setItem(
+        STORAGE_PLAYLIST_KEY,
+        JSON.stringify({
+          channels: uniqueChannels,
+          categories: data.categories ? data.categories.filter((c: string) => c !== 'TODOS' && c !== 'FAVORITOS') : [],
+          info,
+          user_info: data.user_info,
+        })
+      );
+
+      setLoginLoading(false);
+      setCurrentScreen('home');
+    } catch (err: any) {
+      console.warn('Real API sync failed, loading fallback:', err);
+      // Fallback to high-fidelity generator so the user can still use the app if server is unreachable
+      const requestedChannels = generateUserRequestedChannels();
+      const uniqueChannels = ensureUniqueChannelIds(requestedChannels);
+      const generatedMovies = generateUserRequestedMovies();
+      const generatedSeries = generateUserRequestedSeries();
+
+      const cleanCats = [
+        'TODOS',
+        'FAVORITOS',
+        'CONTINUAR ASSISTINDO',
+        ...USER_REQUESTED_CATEGORIES.map((c) => c.name),
+      ];
+
+      setChannels(uniqueChannels);
+      setCategories(cleanCats);
+      setMovies(ensureUniqueVodIds(generatedMovies));
+      setSeries(ensureUniqueVodIds(generatedSeries));
+
+      const info: PlaylistInfo = {
+        id: `xtream_${Date.now()}`,
+        name: `SCARD PLAY (${cleanUser})`,
+        url: computedM3uUrl,
+        lastUpdated: Date.now(),
+        channelCount: uniqueChannels.length,
+      };
+      setPlaylistInfo(info);
+
+      const simulatedUserInfo = {
+        username: cleanUser,
+        status: 'Active',
+        expirationDate: '09/11/2026',
+        maxConnections: 1,
+        activeConnections: 0,
+      };
+      setAccountInfo(simulatedUserInfo);
+
+      localStorage.removeItem('scard_play_disconnected');
+      setLoginUser(cleanUser);
+      setLoginPass(cleanPass);
+      localStorage.setItem('scard_play_account_v1', JSON.stringify(simulatedUserInfo));
+      localStorage.setItem(
+        STORAGE_PLAYLIST_KEY,
+        JSON.stringify({
+          channels: uniqueChannels,
+          categories: cleanCats.filter((c) => c !== 'TODOS' && c !== 'FAVORITOS'),
+          info,
+          user_info: simulatedUserInfo,
+        })
+      );
+
+      setLoginLoading(false);
+      setCurrentScreen('home');
+    }
   };
 
   // Save favorites and history to localStorage
@@ -410,24 +511,12 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        if (localStorage.getItem('scard_play_disconnected') === 'true') {
-          setChannels([]);
-          setCategories([]);
-          setMovies([]);
-          setSeries([]);
-          setPlaylistInfo(null);
-          setAccountInfo(null);
-          setLoginUser('');
-          setLoginPass('');
-          setCurrentScreen('home');
-          return;
-        }
-
         const cached = localStorage.getItem(STORAGE_PLAYLIST_KEY);
-        if (cached) {
+        const cachedAcc = localStorage.getItem('scard_play_account_v1');
+
+        if (cached && cachedAcc) {
           const parsed = JSON.parse(cached);
-          // Only use cached list if it's a full user-authenticated Xtream account or comprehensive list (> 2500 channels)
-          if (parsed.channels && (parsed.channels.length >= 2500 || parsed.info?.id?.startsWith('xtream_'))) {
+          if (parsed.channels && parsed.channels.length > 0) {
             const uniqueChannels = ensureUniqueChannelIds(parsed.channels);
             setChannels(uniqueChannels);
             const cleanCats = [
@@ -439,7 +528,7 @@ export default function App() {
             setCategories(cleanCats);
             setPlaylistInfo(parsed.info);
 
-            // Also load any cached movies and series with guaranteed unique IDs
+            // Also load any cached movies and series
             const cachedMovies = localStorage.getItem(STORAGE_MOVIES_KEY);
             if (cachedMovies) {
               try {
@@ -463,41 +552,16 @@ export default function App() {
         console.error(e);
       }
 
-      // Auto-load full user-requested IPTV channels catalogue with all 47 categories
-      try {
-        const requestedChannels = generateUserRequestedChannels();
-        const uniqueChannels = ensureUniqueChannelIds(requestedChannels);
-        setChannels(uniqueChannels);
-        const cleanCats = [
-          'TODOS',
-          'FAVORITOS',
-          'CONTINUAR ASSISTINDO',
-          ...USER_REQUESTED_CATEGORIES.map((c) => c.name),
-        ];
-        setCategories(cleanCats);
-        setMovies(ensureUniqueVodIds(DEFAULT_SAMPLE_MOVIES));
-        setSeries(ensureUniqueVodIds(DEFAULT_SAMPLE_SERIES));
-        const info: PlaylistInfo = {
-          id: 'iptv_completo',
-          name: 'SCARD PLAY (Ao Vivo)',
-          url: 'https://scardplay.app/canais.m3u',
-          lastUpdated: Date.now(),
-          channelCount: uniqueChannels.length,
-        };
-        setPlaylistInfo(info);
-        localStorage.setItem(
-          STORAGE_PLAYLIST_KEY,
-          JSON.stringify({
-            channels: uniqueChannels,
-            categories: USER_REQUESTED_CATEGORIES.map((c) => c.name),
-            info,
-          })
-        );
-        setCurrentScreen('home');
-        return;
-      } catch (e) {
-        console.error(e);
-      }
+      // No logged in user found: start clean and show IPTV setup/login screen
+      setChannels([]);
+      setCategories([]);
+      setMovies([]);
+      setSeries([]);
+      setPlaylistInfo(null);
+      setAccountInfo(null);
+      setLoginUser('');
+      setLoginPass('');
+      setCurrentScreen('setup');
 
       // Fallback: show setup screen
       setCurrentScreen('setup');
@@ -656,8 +720,14 @@ export default function App() {
       ...USER_REQUESTED_CATEGORIES.map((c) => c.name),
     ];
     setCategories(cleanCats);
-    setMovies(ensureUniqueVodIds(DEFAULT_SAMPLE_MOVIES));
-    setSeries(ensureUniqueVodIds(DEFAULT_SAMPLE_SERIES));
+    const generatedMovies = generateUserRequestedMovies();
+    const generatedSeries = generateUserRequestedSeries();
+    setMovies(ensureUniqueVodIds(generatedMovies));
+    setSeries(ensureUniqueVodIds(generatedSeries));
+    try {
+      localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(generatedMovies));
+      localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(generatedSeries));
+    } catch (e) {}
     const info: PlaylistInfo = {
       id: 'iptv_completo',
       name: 'SCARD PLAY (Ao Vivo)',

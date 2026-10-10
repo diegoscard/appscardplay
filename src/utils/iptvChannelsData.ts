@@ -1,4 +1,4 @@
-import { Channel } from '../types';
+import { Channel, VodMovie, VodSeries } from '../types';
 
 export interface CategorySpec {
   name: string;
@@ -579,6 +579,95 @@ export function generateUserRequestedChannels(): Channel[] {
       globalOrder++;
     }
   }
+
+  return result;
+}
+
+export function generateUserRequestedMovies(): VodMovie[] {
+  const result: VodMovie[] = [];
+  const movieCategories = [
+    { name: 'Lançamentos (2026)', count: 150 },
+    { name: 'Ação & Aventura', count: 300 },
+    { name: 'Comédia', count: 200 },
+    { name: 'Ficção Científica', count: 150 },
+    { name: 'Documentários', count: 100 },
+    { name: 'Drama', count: 100 },
+  ];
+
+  const posterUrls = [
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/scl6uVD0YZc46WZHgXbEcaH2zYw.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rL6GKuOAPUEGk0hqeY9sLRJTPWE.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/yRf0OrswYzoLnjXLpTLsmRUVtd.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/Ao8YIks0or4845Z1lXbINz7tMh8.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/xaloioubOPQOFaERBPxLHnONyeJ.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/36zoDJG52EkHnMm60M9BdLw8Siv.jpg',
+  ];
+
+  const plots = [
+    'Uma história emocionante cheia de suspense, reviravoltas e momentos marcantes.',
+    'Aventura épica de tirar o fôlego, com efeitos especiais de última geração.',
+    'Uma comédia leve e divertida para rir com toda a família.',
+    'Exploração do desconhecido em um futuro distante repleto de ficção científica de ponta.',
+    'A análise profunda de fatos reais que mudaram o curso da humanidade.',
+    'Drama envolvendo com atuações brilhantes sobre superação e coragem.',
+  ];
+
+  let globalId = 1;
+  movieCategories.forEach((catSpec) => {
+    for (let i = 0; i < catSpec.count; i++) {
+      const idx = (globalId - 1) % posterUrls.length;
+      result.push({
+        id: `vod_m_${globalId}`,
+        name: `${catSpec.name} - Filme #${i + 1}`,
+        streamUrl: STREAM_POOL[globalId % STREAM_POOL.length],
+        posterUrl: posterUrls[idx],
+        category: catSpec.name,
+        year: String(2020 + (globalId % 7)),
+        rating: Number((7.0 + (globalId % 30) / 10).toFixed(1)),
+        plot: plots[idx],
+        cast: 'Atores renomados e convidados especiais',
+        director: 'Diretor Premiado',
+      });
+      globalId++;
+    }
+  });
+
+  return result;
+}
+
+export function generateUserRequestedSeries(): VodSeries[] {
+  const result: VodSeries[] = [];
+  const seriesCategories = [
+    { name: 'Séries', count: 500 },
+    { name: 'Animes & Desenhos', count: 2000 },
+    { name: 'Documentários & Natureza', count: 1500 },
+    { name: 'Ficção Científica', count: 1258 },
+  ];
+
+  const posterUrls = [
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/3o7f2Xjwl5hcoiioR9eGdD9ezHt.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/1fH41ccMKvgDTbbcCxWWH6fznah.jpg',
+    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/lnLlxi9GcPNyLcmvt6uVipI73m5.jpg',
+  ];
+
+  let globalId = 1;
+  seriesCategories.forEach((catSpec) => {
+    for (let i = 0; i < catSpec.count; i++) {
+      const idx = (globalId - 1) % posterUrls.length;
+      result.push({
+        id: `series_${globalId}`,
+        name: `${catSpec.name} - Série #${i + 1}`,
+        posterUrl: posterUrls[idx],
+        category: catSpec.name,
+        plot: 'Uma série aclamada pela crítica com múltiplos episódios e temporadas completas.',
+        cast: 'Elenco principal e estrelas convidadas',
+        genre: 'Ação, Drama, Suspense',
+        rating: Number((7.5 + (globalId % 20) / 10).toFixed(1)),
+        year: String(2018 + (globalId % 9)),
+      });
+      globalId++;
+    }
+  });
 
   return result;
 }
