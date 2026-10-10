@@ -165,9 +165,9 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       {/* Main Catalog Area */}
       <div className="p-6 md:p-12 space-y-6">
         {/* Top Controls: Category Tabs & Search Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full min-w-0">
           {/* Categories Pill/Tab Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex-1 min-w-0 max-w-full flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
             {categories.map((cat, idx) => {
               const active = selectedCategory === cat;
               return (
