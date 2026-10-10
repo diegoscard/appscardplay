@@ -147,14 +147,18 @@ export default function App() {
       return DEFAULT_SAMPLE_MOVIES;
     }
   });
-  const [movieCategories, setMovieCategories] = useState<string[]>([
-    'TODOS',
-    'Lançamentos (2026)',
-    'Ficção Científica',
-    'Animação & Aventura',
-    'Documentário',
-  ]);
   const [selectedMovieCategory, setSelectedMovieCategory] = useState<string>('TODOS');
+
+  // Dynamic movie categories based on movies list
+  const movieCategories = useMemo(() => {
+    const cats = new Set<string>();
+    movies.forEach((m) => {
+      if (m.category) {
+        cats.add(m.category);
+      }
+    });
+    return ['TODOS', ...Array.from(cats).sort()];
+  }, [movies]);
 
   // Series State
   const [series, setSeries] = useState<VodSeries[]>(() => {
@@ -165,13 +169,18 @@ export default function App() {
       return DEFAULT_SAMPLE_SERIES;
     }
   });
-  const [seriesCategories, setSeriesCategories] = useState<string[]>([
-    'TODOS',
-    'Animes & Ação',
-    'Documentários & Natureza',
-    'Ficção Científica',
-  ]);
   const [selectedSeriesCategory, setSelectedSeriesCategory] = useState<string>('TODOS');
+
+  // Dynamic series categories based on series list
+  const seriesCategories = useMemo(() => {
+    const cats = new Set<string>();
+    series.forEach((s) => {
+      if (s.category) {
+        cats.add(s.category);
+      }
+    });
+    return ['TODOS', ...Array.from(cats).sort()];
+  }, [series]);
 
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
@@ -268,10 +277,8 @@ export default function App() {
     setCategories([]);
     setSelectedCategory('TODOS');
     setMovies([]);
-    setMovieCategories(['TODOS']);
     setSelectedMovieCategory('TODOS');
     setSeries([]);
-    setSeriesCategories(['TODOS']);
     setSelectedSeriesCategory('TODOS');
     setPlaylistInfo(null);
     setAccountInfo(null);

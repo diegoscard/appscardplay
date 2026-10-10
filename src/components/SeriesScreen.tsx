@@ -222,7 +222,7 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
         {/* Category Tabs & Search Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categories.slice(0, 10).map((cat, idx) => {
+            {categories.map((cat, idx) => {
               const active = selectedCategory === cat;
               return (
                 <button

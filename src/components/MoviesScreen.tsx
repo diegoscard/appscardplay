@@ -162,7 +162,142 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         </div>
       )}
 
-      {/* Main Catalog Area removed as requested */}
+      {/* Main Catalog Area */}
+      <div className="p-6 md:p-12 space-y-6">
+        {/* Top Controls: Category Tabs & Search Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Categories Pill/Tab Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {categories.map((cat, idx) => {
+              const active = selectedCategory === cat;
+              return (
+                <button
+                  key={`mcat_${cat}_${idx}`}
+                  onClick={() => onSelectCategory(cat)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
+                    active
+                      ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/30 border border-red-500'
+                      : 'bg-[#140c11] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar filme..."
+              className="w-full bg-[#140c11] border border-neutral-800 focus:border-red-500 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none transition"
+            />
+          </div>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Film className="w-5 h-5 text-red-500" />
+            <h2 className="text-xl font-black text-white tracking-wide">
+              Catálogo de Filmes ({filteredMovies.length})
+            </h2>
+          </div>
+          <span className="text-xs text-neutral-500 font-medium">
+            Exibindo {displayedMovies.length} de {filteredMovies.length} • Selecione no controle e aperte OK
+          </span>
+        </div>
+
+        {/* Movies Grid */}
+        {filteredMovies.length === 0 ? (
+          <div className="p-16 text-center rounded-3xl bg-[#140c11] border border-neutral-800 space-y-3">
+            <Film className="w-12 h-12 text-neutral-600 mx-auto" />
+            <p className="text-base font-bold text-neutral-300">Nenhum filme encontrado</p>
+            <p className="text-xs text-neutral-500">
+              Tente selecionar outra categoria ou verificar sua conexão com o servidor.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-5">
+              {displayedMovies.map((movie, idx) => (
+                <div
+                  key={`${movie.id}_${idx}`}
+                  onClick={() => setSelectedMovie(movie)}
+                  className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
+                >
+                  {/* Poster Image */}
+                  {movie.posterUrl ? (
+                    <img
+                      src={movie.posterUrl}
+                      alt={movie.name}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 to-neutral-950 flex flex-col items-center justify-center p-3 text-center">
+                      <Film className="w-8 h-8 text-red-500 mb-2 opacity-60" />
+                      <span className="text-[11px] font-bold text-neutral-300 line-clamp-3">
+                        {movie.name}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Dark overlay scrim */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
+
+                  {/* Top Badge: Rating / Year */}
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+                    {movie.rating ? (
+                      <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-amber-400 font-black text-[10px] flex items-center gap-0.5 border border-amber-400/30">
+                        <Star className="w-2.5 h-2.5 fill-amber-400" />
+                        {movie.rating}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Bottom Content */}
+                  <div className="relative z-10 space-y-1">
+                    <h3 className="text-xs font-black text-white line-clamp-2 group-hover:text-amber-300 transition-colors">
+                      {movie.name}
+                    </h3>
+                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-medium">
+                      <span>{movie.year || movie.category}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPlayMovie(movie);
+                        }}
+                        className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
+                        title="Assistir"
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {displayedMovies.length < filteredMovies.length && (
+              <div className="flex justify-center pb-6">
+                <button
+                  onClick={() => setDisplayLimit((prev) => prev + 60)}
+                  className="px-8 py-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 hover:border-red-500 text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95 flex items-center gap-2"
+                >
+                  <span>Carregar Mais Filmes (+60)</span>
+                  <span className="text-red-400">• Exibindo {displayedMovies.length} de {filteredMovies.length}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Movie Details Modal */}
       {selectedMovie && (
