@@ -479,7 +479,7 @@ export default function App() {
         setSeries(ensureUniqueVodIds(DEFAULT_SAMPLE_SERIES));
         const info: PlaylistInfo = {
           id: 'iptv_completo',
-          name: 'SCARD PLAY (TV ao Vivo)',
+          name: 'SCARD PLAY (Ao Vivo)',
           url: 'https://scardplay.app/canais.m3u',
           lastUpdated: Date.now(),
           channelCount: uniqueChannels.length,
@@ -660,7 +660,7 @@ export default function App() {
     setSeries(ensureUniqueVodIds(DEFAULT_SAMPLE_SERIES));
     const info: PlaylistInfo = {
       id: 'iptv_completo',
-      name: 'SCARD PLAY (TV ao Vivo)',
+      name: 'SCARD PLAY (Ao Vivo)',
       url: 'https://scardplay.app/canais.m3u',
       lastUpdated: Date.now(),
       channelCount: uniqueChannels.length,
@@ -872,7 +872,7 @@ export default function App() {
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
               </div>
               <span className="text-[10px] text-red-400 font-bold tracking-widest uppercase block -mt-0.5">
-                TV AO VIVO · FILMES · SÉRIES
+                AO VIVO · FILMES · SÉRIES
               </span>
             </div>
           </div>
@@ -888,7 +888,7 @@ export default function App() {
               />
               <HeaderNavTab
                 icon={<Tv className="w-4 h-4" />}
-                label="TV ao Vivo"
+                label="Ao Vivo"
                 badge={channels.length > 0 ? `${channels.length}` : undefined}
                 active={currentScreen === 'livetv'}
                 onClick={() => setCurrentScreen('livetv')}
@@ -988,7 +988,7 @@ export default function App() {
               SCARD PLAY
             </h1>
             <p className="text-red-500 tracking-[0.35em] text-sm md:text-base font-bold mt-2">
-              TV AO VIVO · FILMES · SÉRIES
+              AO VIVO · FILMES · SÉRIES
             </p>
             <div className="w-48 h-1 bg-neutral-900 rounded-full mt-10 overflow-hidden">
               <div className="w-full h-full bg-gradient-to-r from-red-600 to-amber-500 animate-[pulse_1.5s_infinite]"></div>
@@ -1177,7 +1177,7 @@ export default function App() {
                         <div>
                           <h3 className="text-xs font-black text-red-500 uppercase tracking-widest flex items-center gap-1.5">
                             <Tv className="w-3.5 h-3.5" />
-                            <span>TV AO VIVO</span>
+                            <span>AO VIVO</span>
                           </h3>
                           <p className="text-[11px] text-neutral-400">47 categorias organizadas</p>
                         </div>
@@ -1347,7 +1347,7 @@ export default function App() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                           <div>
                             <div className="flex items-center gap-2 text-xs text-red-400 font-bold uppercase tracking-wider mb-1">
-                              <span>TV ao Vivo</span>
+                              <span>Ao Vivo</span>
                               <span>•</span>
                               <span>{selectedCategory}</span>
                             </div>
@@ -1689,7 +1689,7 @@ export default function App() {
                           onClick={() => setCurrentScreen('home')}
                           className="w-full mt-2 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase transition shadow-md shadow-red-600/30"
                         >
-                          Assistir TV ao Vivo Agora
+                          Assistir Ao Vivo Agora
                         </button>
                       </div>
                     )}
