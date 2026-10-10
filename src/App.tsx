@@ -1238,7 +1238,7 @@ export default function App() {
                 <div className="h-full flex flex-col md:flex-row overflow-hidden">
                   {/* Category Filter Column (oculto quando não houver usuário conectado) */}
                   {isUserConnected && (
-                    <div className="w-full md:w-80 bg-[#0c0409] border-r border-neutral-800 p-4 md:p-5 overflow-y-auto space-y-3 shrink-0 flex flex-col">
+                    <div className="w-full md:w-80 bg-[#0c0409] border-r border-neutral-800/80 p-4 md:p-5 space-y-3 shrink-0 flex flex-col h-full md:h-full overflow-hidden">
                       {/* Header */}
                       <div className="flex items-center justify-between px-1">
                         <div>
@@ -1353,7 +1353,7 @@ export default function App() {
                       </div>
 
                       {/* Categorias List (Exact User Requested Order and Counts) */}
-                      <div className="space-y-1.5 flex-1 pr-1">
+                      <div className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
                         {visibleCategories.map((catSpec, idx) => {
                           const catName = catSpec.name;
                           const isSelected = selectedCategory.toLowerCase() === catName.toLowerCase();
