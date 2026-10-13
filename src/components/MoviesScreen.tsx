@@ -18,6 +18,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { VodMovie } from '../types';
+import { getPlayableStreamUrl } from '../utils/m3uParser';
 
 interface MoviesScreenProps {
   movies: VodMovie[];
@@ -92,65 +93,136 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   useEffect(() => {
     setVideoLoaded(false);
     const video = videoRef.current;
-    if (!video || !heroMovie?.streamUrl) return;
+    if (!video || !heroMovie) return;
 
     let hls: Hls | null = null;
-    const streamUrl = heroMovie.streamUrl;
+    let isCancelled = false;
 
-    const playRandomSection = () => {
-      const duration = video.duration || 300;
-      const minStart = 20;
-      const maxStart = Math.max(minStart, Math.floor(duration - 25));
-      const randomOffset = Math.floor(Math.random() * (maxStart - minStart + 1)) + minStart;
+    // Use proxied stream URL for IPTV sources to bypass CORS and mixed-content issues
+    const rawUrl = heroMovie.streamUrl || '';
+    const playableUrl = rawUrl ? getPlayableStreamUrl(rawUrl) : '';
 
-      if (isFinite(randomOffset) && randomOffset > 0) {
-        try {
-          video.currentTime = randomOffset;
-        } catch {
-          // ignore seek errors
+    // Standard high-definition movie preview clips as fallback if IPTV stream is unreachable or offline
+    const FALLBACK_TRAILERS = [
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    ];
+
+    let triedFallback = false;
+
+    const playStream = (srcUrl: string) => {
+      if (isCancelled || !video) return;
+
+      const isHls = srcUrl.includes('.m3u8') || srcUrl.includes('m3u8');
+
+      const attemptPlay = () => {
+        if (isCancelled || !video) return;
+        video.muted = isMuted;
+
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              if (!isCancelled) setVideoLoaded(true);
+            })
+            .catch(() => {
+              if (video) {
+                video.muted = true;
+                setIsMuted(true);
+                video
+                  .play()
+                  .then(() => {
+                    if (!isCancelled) setVideoLoaded(true);
+                  })
+                  .catch(() => {
+                    handleStreamError();
+                  });
+              }
+            });
         }
-      }
+      };
 
-      video.muted = isMuted;
-      video
-        .play()
-        .then(() => setVideoLoaded(true))
-        .catch(() => setVideoLoaded(false));
+      const seekRandom = () => {
+        if (!video || isNaN(video.duration) || video.duration <= 0) return;
+        const duration = video.duration;
+        const minStart = Math.min(15, Math.floor(duration * 0.1));
+        const maxStart = Math.max(minStart, Math.floor(duration * 0.65));
+        const randomOffset = Math.floor(Math.random() * (maxStart - minStart + 1)) + minStart;
+
+        if (isFinite(randomOffset) && randomOffset > 0) {
+          try {
+            video.currentTime = randomOffset;
+          } catch {
+            // ignore seek errors
+          }
+        }
+      };
+
+      const handleStreamError = () => {
+        if (isCancelled) return;
+        if (!triedFallback) {
+          triedFallback = true;
+          const fallback = FALLBACK_TRAILERS[heroIndex % FALLBACK_TRAILERS.length];
+          playStream(fallback);
+        } else {
+          setVideoLoaded(false);
+        }
+      };
+
+      if (Hls.isSupported() && isHls) {
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+        }
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hlsRef.current = hls;
+        hls.loadSource(srcUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          seekRandom();
+          attemptPlay();
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            handleStreamError();
+          }
+        });
+      } else {
+        video.src = srcUrl;
+        video.load();
+
+        const onLoadedData = () => {
+          seekRandom();
+          attemptPlay();
+        };
+
+        const onError = () => {
+          handleStreamError();
+        };
+
+        video.addEventListener('loadeddata', onLoadedData, { once: true });
+        video.addEventListener('error', onError, { once: true });
+      }
     };
 
-    if (Hls.isSupported() && (streamUrl.includes('.m3u8') || streamUrl.includes('m3u8'))) {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-      }
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-      });
-      hlsRef.current = hls;
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        playRandomSection();
-      });
-      hls.on(Hls.Events.ERROR, () => {
-        setVideoLoaded(false);
-      });
-    } else {
-      video.src = streamUrl;
-      video.load();
-
-      const onLoaded = () => playRandomSection();
-      video.addEventListener('loadeddata', onLoaded, { once: true });
-      video.addEventListener('error', () => setVideoLoaded(false), { once: true });
-    }
+    const initialSource = playableUrl || FALLBACK_TRAILERS[heroIndex % FALLBACK_TRAILERS.length];
+    playStream(initialSource);
 
     return () => {
+      isCancelled = true;
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
-  }, [heroMovie?.id, heroMovie?.streamUrl]);
+  }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex]);
 
   // Sync mute state
   useEffect(() => {
@@ -290,7 +362,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
               muted={isMuted}
               loop
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 pointer-events-none scale-105 ${
-                videoLoaded ? 'opacity-55' : 'opacity-0'
+                videoLoaded ? 'opacity-80' : 'opacity-0'
               }`}
             />
 
@@ -308,8 +380,8 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
             )}
 
             {/* Dark Cinematic Gradients */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/60 to-transparent z-10" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/85 to-transparent z-10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/40 to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/75 to-transparent z-10 pointer-events-none" />
 
             {/* Top-Right Audio Mute Toggle & Spotlight Navigation */}
             <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-2">
