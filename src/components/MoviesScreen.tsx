@@ -348,9 +348,9 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       {/* ================= RIGHT MAIN SCROLLABLE CONTENT ================= */}
       <div className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
         
-        {/* Hero Featured Movie Banner with 1-Min Video Preview & 10s Fade Transition */}
+        {/* Hero Featured Movie Banner with 1-Min Video Preview & Smooth 10s Transition */}
         {heroMovie && (
-          <div className="relative w-full h-[360px] md:h-[410px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700">
+          <div className="relative w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700">
             {/* Background Video Player - 100% visibility after 10s */}
             <video
               ref={videoRef}
@@ -379,47 +379,28 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
               )
             )}
 
-            {/* Dark Cinematic Gradients */}
-            {!isCompactView ? (
-              <>
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/40 to-transparent z-10 pointer-events-none transition-opacity duration-700" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/75 to-transparent z-10 pointer-events-none transition-opacity duration-700" />
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/60 z-10 pointer-events-none transition-opacity duration-700" />
-            )}
+            {/* Dark Cinematic Gradients with smooth opacity transition */}
+            <div
+              className={`absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/40 to-transparent z-10 pointer-events-none transition-opacity duration-700 ${
+                isCompactView ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+            <div
+              className={`absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/75 to-transparent z-10 pointer-events-none transition-opacity duration-700 ${
+                isCompactView ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+            <div
+              className={`absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/60 z-10 pointer-events-none transition-opacity duration-700 ${
+                isCompactView ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
 
-            {/* Top-Left Title in Compact Mode (After 10 Seconds) */}
-            {isCompactView && (
-              <div className="absolute top-4 left-4 md:left-8 z-30 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-500 max-w-[calc(100%-220px)]">
-                <span className="px-2.5 py-1 rounded-lg bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider shadow-md border border-red-500/50 flex items-center gap-1 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                  2026
-                </span>
-                <h1 className="text-lg md:text-2xl font-black text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate">
-                  {heroMovie.name}
-                </h1>
-              </div>
-            )}
-
-            {/* Bottom-Left Assistir Agora Button in Compact Mode (Location 'aqui' in screenshot_2.png) */}
-            {isCompactView && (
-              <div className="absolute bottom-5 left-4 md:bottom-7 md:left-8 z-30 animate-in fade-in slide-in-from-bottom-3 duration-500">
-                <button
-                  onClick={() => onPlayMovie(heroMovie)}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs md:text-sm uppercase tracking-wider transition shadow-2xl shadow-red-600/60 flex items-center gap-2.5 cursor-pointer border border-red-500/50 backdrop-blur-sm"
-                >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>ASSISTIR AGORA</span>
-                </button>
-              </div>
-            )}
-
-            {/* Top-Right Audio Mute Toggle & Spotlight Navigation */}
+            {/* Top-Right Audio Mute Toggle & Spotlight Navigation (Matching Exact Height h-9) */}
             <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-2">
               <button
                 onClick={() => setIsMuted(!isMuted)}
-                className="px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/90 backdrop-blur-md border border-neutral-700/80 text-white font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
+                className="h-9 px-3.5 rounded-xl bg-black/60 hover:bg-black/90 backdrop-blur-md border border-neutral-700/80 text-white font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 shrink-0"
                 title={isMuted ? 'Ativar Áudio da Prévia' : 'Mutar Prévia'}
               >
                 {isMuted ? (
@@ -435,117 +416,155 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                 )}
               </button>
 
-              <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md border border-neutral-700/80 rounded-xl p-1">
+              <div className="h-9 px-2 flex items-center justify-center gap-1.5 bg-black/60 hover:bg-black/90 backdrop-blur-md border border-neutral-700/80 rounded-xl transition shadow-lg shrink-0">
                 <button
                   onClick={handlePrevHero}
-                  className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer"
+                  className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer flex items-center justify-center"
                   title="Anterior"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[10px] font-mono px-1.5 font-bold text-amber-400">
+                <span className="text-[10px] font-mono px-1 font-bold text-amber-400">
                   {timeRemaining}s
                 </span>
                 <button
                   onClick={handleNextHero}
-                  className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer"
+                  className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer flex items-center justify-center"
                   title="Próximo"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Hero Full Content Container (Visible First 10 Seconds) */}
-            {!isCompactView && (
-              <div className="relative z-20 h-full max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-8 animate-in fade-in duration-500">
-                {/* Poster Card */}
-                <div className="hidden sm:block w-36 md:w-44 aspect-[2/3] rounded-2xl overflow-hidden shrink-0 shadow-[0_0_40px_rgba(220,38,38,0.4)] border-2 border-red-600/50 bg-neutral-900 group relative">
-                  {heroMovie.posterUrl ? (
-                    <img
-                      src={heroMovie.posterUrl}
-                      alt={heroMovie.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-red-950 to-neutral-950">
-                      <Film className="w-12 h-12 text-red-500 mb-2" />
-                      <span className="text-xs font-bold text-white line-clamp-2">
-                        {heroMovie.name}
-                      </span>
-                    </div>
+            {/* Top-Left Title in Compact Mode (Smooth Fade/Slide in) */}
+            <div
+              className={`absolute top-4 left-4 md:left-8 z-30 flex items-center gap-3 transition-all duration-700 ease-in-out max-w-[calc(100%-220px)] ${
+                isCompactView
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 -translate-y-4 pointer-events-none'
+              }`}
+            >
+              <span className="px-2.5 py-1 rounded-lg bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider shadow-md border border-red-500/50 flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                2026
+              </span>
+              <h1 className="text-lg md:text-2xl font-black text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate">
+                {heroMovie.name}
+              </h1>
+            </div>
+
+            {/* Bottom-Left Assistir Agora Button in Compact Mode (Smooth Slide/Fade in) */}
+            <div
+              className={`absolute bottom-5 left-4 md:bottom-7 md:left-8 z-30 transition-all duration-700 ease-in-out ${
+                isCompactView
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+              }`}
+            >
+              <button
+                onClick={() => onPlayMovie(heroMovie)}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs md:text-sm uppercase tracking-wider transition shadow-2xl shadow-red-600/60 flex items-center gap-2.5 cursor-pointer border border-red-500/50 backdrop-blur-sm"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>ASSISTIR AGORA</span>
+              </button>
+            </div>
+
+            {/* Hero Full Content Container (Smooth fade out after 10 seconds) */}
+            <div
+              className={`relative z-20 h-full max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-8 transition-all duration-700 ease-in-out ${
+                isCompactView
+                  ? 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+                  : 'opacity-100 translate-y-0 scale-100'
+              }`}
+            >
+              {/* Poster Card */}
+              <div className="hidden sm:block w-36 md:w-44 aspect-[2/3] rounded-2xl overflow-hidden shrink-0 shadow-[0_0_40px_rgba(220,38,38,0.4)] border-2 border-red-600/50 bg-neutral-900 group relative">
+                {heroMovie.posterUrl ? (
+                  <img
+                    src={heroMovie.posterUrl}
+                    alt={heroMovie.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-red-950 to-neutral-950">
+                    <Film className="w-12 h-12 text-red-500 mb-2" />
+                    <span className="text-xs font-bold text-white line-clamp-2">
+                      {heroMovie.name}
+                    </span>
+                  </div>
+                )}
+                {/* Playing indicator badge over poster */}
+                {videoLoaded && (
+                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm shadow-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    CENA
+                  </div>
+                )}
+              </div>
+
+              {/* Info details */}
+              <div className="max-w-2xl space-y-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-red-950/50">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    LANÇAMENTOS 2026 · PRÉVIA 1 MIN
+                  </span>
+
+                  {heroMovie.category && (
+                    <span className="text-xs text-neutral-400 font-medium">
+                      {heroMovie.category}
+                    </span>
                   )}
-                  {/* Playing indicator badge over poster */}
-                  {videoLoaded && (
-                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm shadow-md">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                      CENA
-                    </div>
+                  {heroMovie.year && (
+                    <>
+                      <span className="text-neutral-600">·</span>
+                      <span className="text-xs text-amber-400 font-bold">
+                        {heroMovie.year}
+                      </span>
+                    </>
+                  )}
+                  {heroMovie.rating && (
+                    <>
+                      <span className="text-neutral-600">·</span>
+                      <span className="flex items-center gap-1 text-xs text-amber-400 font-bold">
+                        <Star className="w-3 h-3 fill-amber-400" />
+                        {heroMovie.rating}
+                      </span>
+                    </>
                   )}
                 </div>
 
-                {/* Info details */}
-                <div className="max-w-2xl space-y-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-red-950/50">
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                      LANÇAMENTOS 2026 · PRÉVIA 1 MIN
-                    </span>
+                <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+                  {heroMovie.name}
+                </h1>
 
-                    {heroMovie.category && (
-                      <span className="text-xs text-neutral-400 font-medium">
-                        {heroMovie.category}
-                      </span>
-                    )}
-                    {heroMovie.year && (
-                      <>
-                        <span className="text-neutral-600">·</span>
-                        <span className="text-xs text-amber-400 font-bold">
-                          {heroMovie.year}
-                        </span>
-                      </>
-                    )}
-                    {heroMovie.rating && (
-                      <>
-                        <span className="text-neutral-600">·</span>
-                        <span className="flex items-center gap-1 text-xs text-amber-400 font-bold">
-                          <Star className="w-3 h-3 fill-amber-400" />
-                          {heroMovie.rating}
-                        </span>
-                      </>
-                    )}
-                  </div>
+                {heroMovie.plot && (
+                  <p className="text-xs md:text-sm text-neutral-300 line-clamp-3 leading-relaxed max-w-xl drop-shadow">
+                    {heroMovie.plot}
+                  </p>
+                )}
 
-                  <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
-                    {heroMovie.name}
-                  </h1>
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    onClick={() => onPlayMovie(heroMovie)}
+                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition shadow-xl shadow-red-600/40 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>ASSISTIR AGORA</span>
+                  </button>
 
-                  {heroMovie.plot && (
-                    <p className="text-xs md:text-sm text-neutral-300 line-clamp-3 leading-relaxed max-w-xl drop-shadow">
-                      {heroMovie.plot}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-3 pt-1">
-                    <button
-                      onClick={() => onPlayMovie(heroMovie)}
-                      className="px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition shadow-xl shadow-red-600/40 flex items-center gap-2 cursor-pointer"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>ASSISTIR AGORA</span>
-                    </button>
-
-                    <button
-                      onClick={() => setSelectedMovie(heroMovie)}
-                      className="px-4 py-3 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 font-bold text-xs border border-neutral-700 transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Info className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Mais Detalhes</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setSelectedMovie(heroMovie)}
+                    className="px-4 py-3 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 font-bold text-xs border border-neutral-700 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Info className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Mais Detalhes</span>
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* 1-Minute Progress Countdown Bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-neutral-900/80 z-30">
