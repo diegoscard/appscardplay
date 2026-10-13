@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Tv,
   Play,
@@ -54,9 +54,14 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
     });
   }, [series, selectedCategory, searchQuery]);
 
-  // Reset display limit when category or search changes
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Reset display limit and scroll position to top when category or search changes
   React.useEffect(() => {
     setDisplayLimit(60);
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
   }, [selectedCategory, searchQuery]);
 
   const displayedSeries = useMemo(() => {
@@ -223,7 +228,7 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
       </div>
 
       {/* ================= RIGHT MAIN SCROLLABLE CONTENT ================= */}
-      <div className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
+      <div ref={contentRef} className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
         
         {/* Hero Featured Series Banner */}
         {heroSeries && (

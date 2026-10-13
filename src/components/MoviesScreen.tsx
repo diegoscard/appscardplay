@@ -250,9 +250,14 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     });
   }, [movies, selectedCategory, searchQuery]);
 
-  // Reset display limit when category or search changes
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Reset display limit and scroll position to top when category or search changes
   useEffect(() => {
     setDisplayLimit(60);
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
   }, [selectedCategory, searchQuery]);
 
   const displayedMovies = useMemo(() => {
@@ -346,11 +351,11 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       </div>
 
       {/* ================= RIGHT MAIN SCROLLABLE CONTENT ================= */}
-      <div className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
+      <div ref={contentRef} className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
         
-        {/* Hero Featured Movie Banner with 1-Min Video Preview & Smooth 10s Transition */}
+        {/* Hero Featured Movie Banner with 1-Min Video Preview (Sticky Top, Catalog Scrolls Behind) */}
         {heroMovie && (
-          <div className="relative w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700">
+          <div className="sticky top-0 z-30 w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.95)] border-b border-neutral-800/80">
             {/* Background Video Player - 100% visibility after 10s */}
             <video
               ref={videoRef}
@@ -576,8 +581,8 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
           </div>
         )}
 
-        {/* Catalog Grid Area */}
-        <div className="p-6 md:p-8 space-y-6">
+        {/* Catalog Grid Area (Scrolls underneath the sticky hero video banner) */}
+        <div className="relative z-10 p-6 md:p-8 space-y-6 bg-[#080407]">
           {/* Top Controls: Dynamic Header & Search Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full min-w-0 border-b border-neutral-800/60 pb-5">
             <div>
