@@ -40,16 +40,16 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   const [selectedMovie, setSelectedMovie] = useState<VodMovie | null>(null);
   const [displayLimit, setDisplayLimit] = useState(60);
 
-  // 15-Second Rotating Hero Spotlight for 2026 Releases
+  // 1-Minute Rotating Hero Spotlight for 2026 Releases
   const [heroIndex, setHeroIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(15);
-  const [isMuted, setIsMuted] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [isMuted, setIsMuted] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  // Filter 2026 releases for the 15-second rotating preview
+  // Filter 2026 releases for the 1-minute rotating preview
   const releases2026 = useMemo(() => {
     const list = movies.filter((m) => {
       const cat = (m.category || '').toLowerCase();
@@ -72,7 +72,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     return releases2026[heroIndex % releases2026.length];
   }, [releases2026, heroIndex]);
 
-  // Handle 15-second countdown timer to switch movies
+  // Handle 1-minute countdown timer to switch movies
   useEffect(() => {
     if (releases2026.length <= 1) return;
 
@@ -80,7 +80,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           setHeroIndex((idx) => (idx + 1) % releases2026.length);
-          return 15;
+          return 60;
         }
         return prev - 1;
       });
@@ -97,6 +97,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     let hls: Hls | null = null;
     let isCancelled = false;
+    let streamTimeout: NodeJS.Timeout | null = null;
 
     // Use proxied stream URL for IPTV sources to bypass CORS and mixed-content issues
     const rawUrl = heroMovie.streamUrl || '';
@@ -104,6 +105,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     // Standard high-definition movie preview clips as fallback if IPTV stream is unreachable or offline
     const FALLBACK_TRAILERS = [
+      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
       'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
       'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
       'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
@@ -115,6 +117,23 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     const playStream = (srcUrl: string) => {
       if (isCancelled || !video) return;
+
+      if (streamTimeout) clearTimeout(streamTimeout);
+
+      // Destroy previous HLS instance before switching streams
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+
+      // Clean reset video media element
+      try {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      } catch {
+        // ignore reset errors
+      }
 
       const isHls = srcUrl.includes('.m3u8') || srcUrl.includes('m3u8');
 
@@ -172,10 +191,16 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         }
       };
 
+      // 1.2s Fast Connection Timeout to avoid stalling on dead IPTV streams
+      if (!triedFallback) {
+        streamTimeout = setTimeout(() => {
+          if (!isCancelled && !videoLoaded) {
+            handleStreamError();
+          }
+        }, 1200);
+      }
+
       if (Hls.isSupported() && isHls) {
-        if (hlsRef.current) {
-          hlsRef.current.destroy();
-        }
         hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
@@ -185,6 +210,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (streamTimeout) clearTimeout(streamTimeout);
           seekRandom();
           attemptPlay();
         });
@@ -199,6 +225,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         video.load();
 
         const onLoadedData = () => {
+          if (streamTimeout) clearTimeout(streamTimeout);
           seekRandom();
           attemptPlay();
         };
@@ -217,6 +244,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     return () => {
       isCancelled = true;
+      if (streamTimeout) clearTimeout(streamTimeout);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -233,13 +261,16 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
   const handleNextHero = () => {
     setHeroIndex((prev) => (prev + 1) % Math.max(1, releases2026.length));
-    setTimeRemaining(15);
+    setTimeRemaining(60);
   };
 
   const handlePrevHero = () => {
     setHeroIndex((prev) => (prev - 1 + releases2026.length) % Math.max(1, releases2026.length));
-    setTimeRemaining(15);
+    setTimeRemaining(60);
   };
+
+  // Compact View state: after 10 seconds of spotlight (60 - 10 = 50s remaining)
+  const isCompactView = timeRemaining <= 50;
 
   const filteredMovies = useMemo(() => {
     return movies.filter((m) => {
@@ -351,18 +382,21 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       {/* ================= RIGHT MAIN SCROLLABLE CONTENT ================= */}
       <div className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
         
-        {/* Hero Featured Movie Banner with 15s Video Preview */}
+        {/* Hero Featured Movie Banner with 1-Min Video Preview & 10s Fade Transition */}
         {heroMovie && (
-          <div className="relative w-full h-[360px] md:h-[410px] shrink-0 overflow-hidden bg-black select-none">
-            {/* Background Video Player */}
+          <div className="relative w-full h-[360px] md:h-[410px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700">
+            {/* Background Video Player - 100% visibility after 10s */}
             <video
               ref={videoRef}
               playsInline
               autoPlay
               muted={isMuted}
               loop
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 pointer-events-none scale-105 ${
-                videoLoaded ? 'opacity-80' : 'opacity-0'
+              onPlay={() => setVideoLoaded(true)}
+              onPlaying={() => setVideoLoaded(true)}
+              onLoadedData={() => setVideoLoaded(true)}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 pointer-events-none scale-105 z-0 ${
+                isCompactView ? 'opacity-100' : 'opacity-85'
               }`}
             />
 
@@ -380,8 +414,40 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
             )}
 
             {/* Dark Cinematic Gradients */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/40 to-transparent z-10 pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/75 to-transparent z-10 pointer-events-none" />
+            {!isCompactView ? (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/40 to-transparent z-10 pointer-events-none transition-opacity duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/75 to-transparent z-10 pointer-events-none transition-opacity duration-700" />
+              </>
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/60 z-10 pointer-events-none transition-opacity duration-700" />
+            )}
+
+            {/* Top-Left Title in Compact Mode (After 10 Seconds) */}
+            {isCompactView && (
+              <div className="absolute top-4 left-4 md:left-8 z-30 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-500 max-w-[calc(100%-220px)]">
+                <span className="px-2.5 py-1 rounded-lg bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider shadow-md border border-red-500/50 flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  2026
+                </span>
+                <h1 className="text-lg md:text-2xl font-black text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate">
+                  {heroMovie.name}
+                </h1>
+              </div>
+            )}
+
+            {/* Bottom-Left Assistir Agora Button in Compact Mode (Location 'aqui' in screenshot_2.png) */}
+            {isCompactView && (
+              <div className="absolute bottom-5 left-4 md:bottom-7 md:left-8 z-30 animate-in fade-in slide-in-from-bottom-3 duration-500">
+                <button
+                  onClick={() => onPlayMovie(heroMovie)}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs md:text-sm uppercase tracking-wider transition shadow-2xl shadow-red-600/60 flex items-center gap-2.5 cursor-pointer border border-red-500/50 backdrop-blur-sm"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>ASSISTIR AGORA</span>
+                </button>
+              </div>
+            )}
 
             {/* Top-Right Audio Mute Toggle & Spotlight Navigation */}
             <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-2">
@@ -424,100 +490,102 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
               </div>
             </div>
 
-            {/* Hero Content Container */}
-            <div className="relative z-20 h-full max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-8">
-              {/* Poster Card */}
-              <div className="hidden sm:block w-36 md:w-44 aspect-[2/3] rounded-2xl overflow-hidden shrink-0 shadow-[0_0_40px_rgba(220,38,38,0.4)] border-2 border-red-600/50 bg-neutral-900 group relative">
-                {heroMovie.posterUrl ? (
-                  <img
-                    src={heroMovie.posterUrl}
-                    alt={heroMovie.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-red-950 to-neutral-950">
-                    <Film className="w-12 h-12 text-red-500 mb-2" />
-                    <span className="text-xs font-bold text-white line-clamp-2">
-                      {heroMovie.name}
-                    </span>
-                  </div>
-                )}
-                {/* Playing indicator badge over poster */}
-                {videoLoaded && (
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm shadow-md">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    CENA
-                  </div>
-                )}
-              </div>
-
-              {/* Info details */}
-              <div className="max-w-2xl space-y-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-red-950/50">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    LANÇAMENTOS 2026 · PRÉVIA 15S
-                  </span>
-
-                  {heroMovie.category && (
-                    <span className="text-xs text-neutral-400 font-medium">
-                      {heroMovie.category}
-                    </span>
-                  )}
-                  {heroMovie.year && (
-                    <>
-                      <span className="text-neutral-600">·</span>
-                      <span className="text-xs text-amber-400 font-bold">
-                        {heroMovie.year}
+            {/* Hero Full Content Container (Visible First 10 Seconds) */}
+            {!isCompactView && (
+              <div className="relative z-20 h-full max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-8 animate-in fade-in duration-500">
+                {/* Poster Card */}
+                <div className="hidden sm:block w-36 md:w-44 aspect-[2/3] rounded-2xl overflow-hidden shrink-0 shadow-[0_0_40px_rgba(220,38,38,0.4)] border-2 border-red-600/50 bg-neutral-900 group relative">
+                  {heroMovie.posterUrl ? (
+                    <img
+                      src={heroMovie.posterUrl}
+                      alt={heroMovie.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-red-950 to-neutral-950">
+                      <Film className="w-12 h-12 text-red-500 mb-2" />
+                      <span className="text-xs font-bold text-white line-clamp-2">
+                        {heroMovie.name}
                       </span>
-                    </>
+                    </div>
                   )}
-                  {heroMovie.rating && (
-                    <>
-                      <span className="text-neutral-600">·</span>
-                      <span className="flex items-center gap-1 text-xs text-amber-400 font-bold">
-                        <Star className="w-3 h-3 fill-amber-400" />
-                        {heroMovie.rating}
-                      </span>
-                    </>
+                  {/* Playing indicator badge over poster */}
+                  {videoLoaded && (
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm shadow-md">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                      CENA
+                    </div>
                   )}
                 </div>
 
-                <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
-                  {heroMovie.name}
-                </h1>
+                {/* Info details */}
+                <div className="max-w-2xl space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-red-950/50">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                      LANÇAMENTOS 2026 · PRÉVIA 1 MIN
+                    </span>
 
-                {heroMovie.plot && (
-                  <p className="text-xs md:text-sm text-neutral-300 line-clamp-3 leading-relaxed max-w-xl drop-shadow">
-                    {heroMovie.plot}
-                  </p>
-                )}
+                    {heroMovie.category && (
+                      <span className="text-xs text-neutral-400 font-medium">
+                        {heroMovie.category}
+                      </span>
+                    )}
+                    {heroMovie.year && (
+                      <>
+                        <span className="text-neutral-600">·</span>
+                        <span className="text-xs text-amber-400 font-bold">
+                          {heroMovie.year}
+                        </span>
+                      </>
+                    )}
+                    {heroMovie.rating && (
+                      <>
+                        <span className="text-neutral-600">·</span>
+                        <span className="flex items-center gap-1 text-xs text-amber-400 font-bold">
+                          <Star className="w-3 h-3 fill-amber-400" />
+                          {heroMovie.rating}
+                        </span>
+                      </>
+                    )}
+                  </div>
 
-                <div className="flex items-center gap-3 pt-1">
-                  <button
-                    onClick={() => onPlayMovie(heroMovie)}
-                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition shadow-xl shadow-red-600/40 flex items-center gap-2 cursor-pointer"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>ASSISTIR COMPLETO</span>
-                  </button>
+                  <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+                    {heroMovie.name}
+                  </h1>
 
-                  <button
-                    onClick={() => setSelectedMovie(heroMovie)}
-                    className="px-4 py-3 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 font-bold text-xs border border-neutral-700 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Info className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Mais Detalhes</span>
-                  </button>
+                  {heroMovie.plot && (
+                    <p className="text-xs md:text-sm text-neutral-300 line-clamp-3 leading-relaxed max-w-xl drop-shadow">
+                      {heroMovie.plot}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      onClick={() => onPlayMovie(heroMovie)}
+                      className="px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition shadow-xl shadow-red-600/40 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>ASSISTIR AGORA</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedMovie(heroMovie)}
+                      className="px-4 py-3 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 font-bold text-xs border border-neutral-700 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Info className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Mais Detalhes</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* 15-Second Progress Countdown Bar */}
+            {/* 1-Minute Progress Countdown Bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-neutral-900/80 z-30">
               <div
                 className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(239,68,68,0.8)]"
-                style={{ width: `${((15 - timeRemaining) / 15) * 100}%` }}
+                style={{ width: `${((60 - timeRemaining) / 60) * 100}%` }}
               />
             </div>
           </div>

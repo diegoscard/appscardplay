@@ -24,7 +24,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_308429',
     name: '(Des)controle (2026)',
-    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/308429.mp4',
+    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/scl6uVD0YZc46WZHgXbEcaH2zYw.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -36,7 +36,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_225331',
     name: '53 Domingos (2026)',
-    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/225331.mp4',
+    streamUrl: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rL6GKuOAPUEGk0hqeY9sLRJTPWE.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -48,7 +48,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_223695',
     name: 'A Acusada (2026)',
-    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/223695.mp4',
+    streamUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/yRf0OrswYzoLnjXLpTLsmRUVtd.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -60,7 +60,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_308422',
     name: 'A Caixa Azul (2026)',
-    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/308422.mp4',
+    streamUrl: 'https://playertest.longtailvideo.com/adaptive/elephants_dream/elephants_dream.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/Ao8YIks0or4845Z1lXbINz7tMh8.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -72,7 +72,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_222900',
     name: 'A Cela dos Milagres (2025)',
-    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/222900.mp4',
+    streamUrl: 'https://cdn.jwplayer.com/manifests/pvh1238p.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/xaloioubOPQOFaERBPxLHnONyeJ.jpg',
     category: 'Lançamentos (2026)',
     year: '2025',
@@ -84,7 +84,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_308424',
     name: 'A Colega Perfeita (2026)',
-    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/308424.mp4',
+    streamUrl: 'https://bitdash-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e88-8b40-76683be01b4e.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/36zoDJG52EkHnMm60M9BdLw8Siv.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
