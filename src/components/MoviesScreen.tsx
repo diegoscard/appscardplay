@@ -11,8 +11,6 @@ import {
   X,
   Sparkles,
   Flame,
-  ChevronLeft,
-  ChevronRight,
   Maximize2,
   Volume2,
   VolumeX,
@@ -225,16 +223,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     }
   }, [isMuted]);
 
-  const handleNextHero = () => {
-    setHeroIndex((prev) => (prev + 1) % Math.max(1, releases2026.length));
-    setTimeRemaining(60);
-  };
-
-  const handlePrevHero = () => {
-    setHeroIndex((prev) => (prev - 1 + releases2026.length) % Math.max(1, releases2026.length));
-    setTimeRemaining(60);
-  };
-
   // Compact View state: after 10 seconds of spotlight (60 - 10 = 50s remaining)
   const isCompactView = timeRemaining <= 50;
 
@@ -401,7 +389,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
               }`}
             />
 
-            {/* Top-Right Audio Mute Toggle & Spotlight Navigation (Matching Exact Height h-9) */}
+            {/* Top-Right Audio Mute Toggle */}
             <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-2">
               <button
                 onClick={() => setIsMuted(!isMuted)}
@@ -420,26 +408,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                   </>
                 )}
               </button>
-
-              <div className="h-9 px-2 flex items-center justify-center gap-1.5 bg-black/60 hover:bg-black/90 backdrop-blur-md border border-neutral-700/80 rounded-xl transition shadow-lg shrink-0">
-                <button
-                  onClick={handlePrevHero}
-                  className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer flex items-center justify-center"
-                  title="Anterior"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[10px] font-mono px-1 font-bold text-amber-400">
-                  {timeRemaining}s
-                </span>
-                <button
-                  onClick={handleNextHero}
-                  className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer flex items-center justify-center"
-                  title="Próximo"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
 
             {/* Top-Left Title in Compact Mode (Smooth Fade/Slide in) */}
@@ -450,10 +418,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                   : 'opacity-0 -translate-y-4 pointer-events-none'
               }`}
             >
-              <span className="px-2.5 py-1 rounded-lg bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider shadow-md border border-red-500/50 flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                2026
-              </span>
               <h1 className="text-lg md:text-2xl font-black text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate">
                 {heroMovie.name}
               </h1>

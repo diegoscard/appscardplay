@@ -1390,7 +1390,7 @@ export default function App() {
                   )}
 
                   {/* Channels Grid */}
-                  <div className="flex-1 flex flex-col overflow-hidden p-6 md:p-8">
+                  <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6">
                     {!isUserConnected ? (
                       <div className="flex-1 flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">
                         <div className="w-20 h-20 rounded-2xl bg-[#140c11] border border-red-500/40 flex items-center justify-center mb-6 shadow-xl shadow-red-600/20">
@@ -1411,14 +1411,14 @@ export default function App() {
                     ) : (
                       <>
                         {/* Search & Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                           <div>
                             <div className="flex items-center gap-2 text-xs text-red-400 font-bold uppercase tracking-wider mb-1">
                               <span>Ao Vivo</span>
                               <span>•</span>
                               <span>{selectedCategory}</span>
                             </div>
-                            <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">
+                            <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wide">
                               {selectedCategory}
                             </h2>
                             <p className="text-xs text-neutral-400 mt-0.5">
@@ -1472,7 +1472,7 @@ export default function App() {
                             </div>
                           ) : (
                             <div className="space-y-6">
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2.5 sm:gap-3 pt-4 px-4 pb-4">
                                 {displayedChannels.map((ch, idx) => (
                                   <ChannelCardWidget
                                     key={`live_${ch.id}_${idx}`}
@@ -1909,7 +1909,7 @@ function NavButton({
   );
 }
 
-// Channel Card Widget Helper
+// Channel Card Widget Helper - Minimalist & Compact Design
 function ChannelCardWidget({
   channel,
   isFavorite,
@@ -1933,22 +1933,22 @@ function ChannelCardWidget({
   return (
     <div
       onClick={onPlay}
-      className={`group relative flex flex-col p-3 rounded-2xl transition-all duration-200 cursor-pointer border select-none ${
+      className={`group relative flex flex-col p-2 rounded-xl transition-all duration-150 cursor-pointer border select-none ${
         isFocused
-          ? 'bg-[#180a12] border-red-500 shadow-[0_0_25px_rgba(220,38,38,0.5)] scale-105'
-          : 'bg-[#120810] hover:bg-[#180a12] border-neutral-800/80 hover:border-red-500/70 hover:shadow-xl'
+          ? 'bg-[#1a0a14] border-red-500 shadow-md shadow-red-600/30 ring-1 ring-red-500 scale-[1.02]'
+          : 'bg-[#12070f]/90 hover:bg-[#1a0b17] border-neutral-800/60 hover:border-red-500/50 hover:shadow-lg'
       }`}
     >
-      {/* Top Banner Area (Logo or Fallback Monogram) */}
-      <div className="relative w-full h-24 rounded-xl bg-neutral-950 flex items-center justify-center overflow-hidden border border-neutral-800/80 mb-3">
-        {/* Resolution Badge */}
+      {/* Top Banner Area (Compact Logo Box) */}
+      <div className="relative w-full h-14 sm:h-16 rounded-lg bg-black/60 flex items-center justify-center overflow-hidden border border-neutral-850/80 mb-2">
+        {/* Subtle Resolution Indicator */}
         <span
-          className={`absolute top-1.5 left-1.5 z-10 text-[9px] font-black px-1.5 py-0.5 rounded-md border backdrop-blur-xs ${
+          className={`absolute top-1 left-1 z-10 text-[8px] font-mono font-bold px-1 py-0.5 rounded leading-none border backdrop-blur-xs ${
             is4K
-              ? 'bg-amber-950/80 border-amber-500/60 text-amber-300'
+              ? 'bg-amber-950/90 border-amber-500/50 text-amber-300'
               : isFHD
-              ? 'bg-red-950/80 border-red-500/60 text-red-300'
-              : 'bg-black/80 border-neutral-700/60 text-neutral-300'
+              ? 'bg-red-950/90 border-red-500/50 text-red-300'
+              : 'bg-black/80 border-neutral-700/60 text-neutral-400'
           }`}
         >
           {resolutionText}
@@ -1958,21 +1958,21 @@ function ChannelCardWidget({
           <img
             src={channel.logoUrl}
             alt={channel.name}
-            className="w-full h-full object-contain p-2"
+            className="w-full h-full object-contain p-1.5 transition-transform duration-200 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-950/80 to-[#180a12] border border-red-600/40 flex items-center justify-center">
-            <span className="text-red-400 font-black text-lg tracking-wider">
+          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-red-950/70 to-neutral-900 border border-red-600/30 flex items-center justify-center">
+            <span className="text-red-400 font-bold text-xs tracking-wider">
               {channel.initials}
             </span>
           </div>
         )}
 
-        {/* Play Icon on hover / focus */}
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-red-600/40">
-            <Play className="w-5 h-5 fill-white ml-0.5" />
+        {/* Minimalist Play Icon on hover / focus */}
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[0.5px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white flex items-center justify-center shadow-md shadow-red-600/40">
+            <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
           </div>
         </div>
 
@@ -1982,23 +1982,28 @@ function ChannelCardWidget({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          className="absolute top-1.5 right-1.5 z-10 p-1 rounded-md bg-black/60 hover:bg-black/80 transition"
+          className={`absolute top-1 right-1 z-10 p-1 rounded bg-black/70 hover:bg-black/90 transition ${
+            isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
           title={isFavorite ? 'Remover dos favoritos' : 'Favoritar'}
         >
           <Star
-            className={`w-3.5 h-3.5 ${
+            className={`w-3 h-3 ${
               isFavorite ? 'fill-amber-400 text-amber-400' : 'text-neutral-400 hover:text-white'
             }`}
           />
         </button>
       </div>
 
-      {/* Info */}
-      <div className="w-full text-center">
-        <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition">
+      {/* Info: Minimalist & Clean */}
+      <div className="w-full px-0.5 text-center">
+        <h4
+          className="text-[11px] sm:text-xs font-semibold text-neutral-200 truncate group-hover:text-amber-300 transition leading-snug"
+          title={channel.name}
+        >
           {channel.name}
         </h4>
-        <p className="text-[11px] text-neutral-400 truncate mt-0.5 uppercase tracking-wide">
+        <p className="text-[10px] text-neutral-500 truncate mt-0.5 uppercase tracking-wider font-medium">
           {channel.category}
         </p>
       </div>
