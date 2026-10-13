@@ -97,28 +97,18 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     let hls: Hls | null = null;
     let isCancelled = false;
-    let streamTimeout: NodeJS.Timeout | null = null;
 
     // Use proxied stream URL for IPTV sources to bypass CORS and mixed-content issues
     const rawUrl = heroMovie.streamUrl || '';
     const playableUrl = rawUrl ? getPlayableStreamUrl(rawUrl) : '';
 
-    // Standard high-definition movie preview clips as fallback if IPTV stream is unreachable or offline
-    const FALLBACK_TRAILERS = [
-      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    ];
-
-    let triedFallback = false;
+    if (!playableUrl) {
+      setVideoLoaded(false);
+      return;
+    }
 
     const playStream = (srcUrl: string) => {
       if (isCancelled || !video) return;
-
-      if (streamTimeout) clearTimeout(streamTimeout);
 
       // Destroy previous HLS instance before switching streams
       if (hlsRef.current) {
@@ -148,7 +138,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
               if (!isCancelled) setVideoLoaded(true);
             })
             .catch(() => {
-              if (video) {
+              if (video && !isCancelled) {
                 video.muted = true;
                 setIsMuted(true);
                 video
@@ -157,7 +147,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                     if (!isCancelled) setVideoLoaded(true);
                   })
                   .catch(() => {
-                    handleStreamError();
+                    if (!isCancelled) setVideoLoaded(false);
                   });
               }
             });
@@ -180,26 +170,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         }
       };
 
-      const handleStreamError = () => {
-        if (isCancelled) return;
-        if (!triedFallback) {
-          triedFallback = true;
-          const fallback = FALLBACK_TRAILERS[heroIndex % FALLBACK_TRAILERS.length];
-          playStream(fallback);
-        } else {
-          setVideoLoaded(false);
-        }
-      };
-
-      // 1.2s Fast Connection Timeout to avoid stalling on dead IPTV streams
-      if (!triedFallback) {
-        streamTimeout = setTimeout(() => {
-          if (!isCancelled && !videoLoaded) {
-            handleStreamError();
-          }
-        }, 1200);
-      }
-
       if (Hls.isSupported() && isHls) {
         hls = new Hls({
           enableWorker: true,
@@ -210,14 +180,13 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (streamTimeout) clearTimeout(streamTimeout);
           seekRandom();
           attemptPlay();
         });
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) {
-            handleStreamError();
+          if (data.fatal && !isCancelled) {
+            setVideoLoaded(false);
           }
         });
       } else {
@@ -225,13 +194,12 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         video.load();
 
         const onLoadedData = () => {
-          if (streamTimeout) clearTimeout(streamTimeout);
           seekRandom();
           attemptPlay();
         };
 
         const onError = () => {
-          handleStreamError();
+          if (!isCancelled) setVideoLoaded(false);
         };
 
         video.addEventListener('loadeddata', onLoadedData, { once: true });
@@ -239,12 +207,10 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       }
     };
 
-    const initialSource = playableUrl || FALLBACK_TRAILERS[heroIndex % FALLBACK_TRAILERS.length];
-    playStream(initialSource);
+    playStream(playableUrl);
 
     return () => {
       isCancelled = true;
-      if (streamTimeout) clearTimeout(streamTimeout);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
