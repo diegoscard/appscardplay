@@ -87,7 +87,48 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     return () => clearInterval(interval);
   }, [releases2026.length]);
 
-  // Initialize and seek video to random start time when heroMovie changes
+  // Compute a consistent start time for each movie so it always shows the EXACT SAME 1-minute scene!
+  const getMovieSnippetStart = (movie: VodMovie): number => {
+    let hash = 0;
+    const str = movie.id || movie.name || '';
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    // Fixed offset between 90s (1m30s) and 270s (4m30s) - always consistent per movie!
+    return 90 + (Math.abs(hash) % 180);
+  };
+
+  // ZERO CONSUMO VERCEL: Build direct stream URL for trailer snippet without passing through /api/proxy/stream
+  const buildZeroVercelTrailerUrl = (rawUrl: string, startSec: number): string => {
+    if (!rawUrl) return '';
+
+    // Check if user configured an external free proxy (e.g. Cloudflare Worker)
+    let customProxy = '';
+    let streamMode = 'direct';
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        streamMode = window.localStorage.getItem('scardplay_stream_mode') || 'direct';
+        customProxy = window.localStorage.getItem('scardplay_custom_proxy') || '';
+      }
+    } catch {}
+
+    let base = rawUrl;
+    if (streamMode === 'custom' && customProxy.trim()) {
+      const trimmed = customProxy.trim();
+      base = trimmed.includes('?') ? `${trimmed}&url=${encodeURIComponent(rawUrl)}` : `${trimmed}?url=${encodeURIComponent(rawUrl)}`;
+    }
+
+    // Media fragment for HTML5 video: #t=start,end tells compliant browsers to request ONLY that 60-second byte range!
+    if (!base.includes('.m3u8') && !base.includes('m3u8')) {
+      const fragment = `#t=${startSec},${startSec + 60}`;
+      return base.includes('#t=') ? base : `${base}${fragment}`;
+    }
+
+    return base;
+  };
+
+  // Initialize and run the exact 1-minute snippet for each catalog movie (ZERO Vercel consumption)
   useEffect(() => {
     setVideoLoaded(false);
     const video = videoRef.current;
@@ -95,15 +136,27 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     let hls: Hls | null = null;
     let isCancelled = false;
+    let timeUpdateHandler: (() => void) | null = null;
 
-    // Use proxied stream URL for IPTV sources to bypass CORS and mixed-content issues
-    const rawUrl = heroMovie.streamUrl || '';
-    const playableUrl = rawUrl ? getPlayableStreamUrl(rawUrl) : '';
-
-    if (!playableUrl) {
+    // Respect user bandwidth toggle if manually disabled
+    const isPreviewVideoEnabled =
+      typeof window !== 'undefined' ? window.localStorage.getItem('scardplay_preview_video') !== 'false' : true;
+    if (!isPreviewVideoEnabled) {
       setVideoLoaded(false);
       return;
     }
+
+    const rawUrl = heroMovie.streamUrl || '';
+    if (!rawUrl) {
+      setVideoLoaded(false);
+      return;
+    }
+
+    // 1. Consistent start time for this specific movie
+    const snippetStart = getMovieSnippetStart(heroMovie);
+
+    // 2. Direct URL: NEVER touches Vercel /api/proxy/stream!
+    const directTrailerUrl = buildZeroVercelTrailerUrl(rawUrl, snippetStart);
 
     const playStream = (srcUrl: string) => {
       if (isCancelled || !video) return;
@@ -114,7 +167,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         hlsRef.current = null;
       }
 
-      // Clean reset video media element
+      // Clean reset video media element to immediately terminate any ongoing HTTP connection
       try {
         video.pause();
         video.removeAttribute('src');
@@ -152,33 +205,44 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         }
       };
 
-      const seekRandom = () => {
-        if (!video || isNaN(video.duration) || video.duration <= 0) return;
-        const duration = video.duration;
-        const minStart = Math.min(15, Math.floor(duration * 0.1));
-        const maxStart = Math.max(minStart, Math.floor(duration * 0.65));
-        const randomOffset = Math.floor(Math.random() * (maxStart - minStart + 1)) + minStart;
-
-        if (isFinite(randomOffset) && randomOffset > 0) {
-          try {
-            video.currentTime = randomOffset;
-          } catch {
-            // ignore seek errors
+      const seekToConsistentSnippet = () => {
+        if (!video) return;
+        try {
+          if (video.duration && isFinite(video.duration) && video.duration > snippetStart) {
+            video.currentTime = snippetStart;
+          } else if (snippetStart > 0) {
+            video.currentTime = snippetStart;
           }
+        } catch {
+          // ignore seek errors
         }
       };
+
+      // Loop only the 60-second snippet (prevents buffering the rest of the movie!)
+      timeUpdateHandler = () => {
+        if (!video || isCancelled) return;
+        const current = video.currentTime;
+        // When it reaches 60s past the snippet start, loop back to the exact start
+        if (current >= snippetStart + 60 || (current < snippetStart - 2 && current > 5)) {
+          try {
+            video.currentTime = snippetStart;
+          } catch {}
+        }
+      };
+      video.addEventListener('timeupdate', timeUpdateHandler);
 
       if (Hls.isSupported() && isHls) {
         hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
+          maxBufferLength: 30, // Limit buffer ahead to keep data tiny
         });
         hlsRef.current = hls;
         hls.loadSource(srcUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          seekRandom();
+          seekToConsistentSnippet();
           attemptPlay();
         });
 
@@ -192,7 +256,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         video.load();
 
         const onLoadedData = () => {
-          seekRandom();
+          seekToConsistentSnippet();
           attemptPlay();
         };
 
@@ -205,13 +269,24 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       }
     };
 
-    playStream(playableUrl);
+    playStream(directTrailerUrl);
 
     return () => {
       isCancelled = true;
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
+      }
+      if (video) {
+        if (timeUpdateHandler) {
+          video.removeEventListener('timeupdate', timeUpdateHandler);
+        }
+        // Immediately terminate network download and release buffer
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        } catch {}
       }
     };
   }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex]);
@@ -344,12 +419,13 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         {/* Hero Featured Movie Banner with 1-Min Video Preview (Sticky Top, Catalog Scrolls Behind) */}
         {heroMovie && (
           <div className="sticky top-0 z-30 w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.95)] border-b border-neutral-800/80">
-            {/* Background Video Player - 100% visibility after 10s */}
+            {/* Background Video Player - 1-Min Snippet Loop, Zero Vercel Bandwidth */}
             <video
               ref={videoRef}
               playsInline
               autoPlay
               muted={isMuted}
+              preload="metadata"
               loop
               onPlay={() => setVideoLoaded(true)}
               onPlaying={() => setVideoLoaded(true)}

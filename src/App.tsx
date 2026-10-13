@@ -33,6 +33,9 @@ import {
   Clapperboard,
   Disc3,
   Plus,
+  Zap,
+  Server,
+  Globe,
 } from 'lucide-react';
 import { Channel, AppScreen, PlaylistInfo, UserStatus, VodMovie, VodSeries } from './types';
 import { parseM3u, ensureUniqueChannelIds, ensureUniqueVodIds } from './utils/m3uParser';
@@ -282,6 +285,51 @@ export default function App() {
       return null;
     }
   });
+
+  // Streaming Bandwidth & Vercel Origin Optimization States (Prevents Fast Origin Transfer exhaustion)
+  const [streamMode, setStreamMode] = useState<'direct' | 'proxy' | 'custom'>(() => {
+    try {
+      return (localStorage.getItem('scardplay_stream_mode') as any) || 'direct';
+    } catch {
+      return 'direct';
+    }
+  });
+  const [customProxy, setCustomProxy] = useState<string>(() => {
+    try {
+      return localStorage.getItem('scardplay_custom_proxy') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [previewVideoEnabled, setPreviewVideoEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('scardplay_preview_video') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleSetStreamMode = (mode: 'direct' | 'proxy' | 'custom') => {
+    setStreamMode(mode);
+    try {
+      localStorage.setItem('scardplay_stream_mode', mode);
+    } catch {}
+  };
+
+  const handleSetCustomProxy = (url: string) => {
+    setCustomProxy(url);
+    try {
+      localStorage.setItem('scardplay_custom_proxy', url);
+    } catch {}
+  };
+
+  const handleTogglePreviewVideo = () => {
+    const nextVal = !previewVideoEnabled;
+    setPreviewVideoEnabled(nextVal);
+    try {
+      localStorage.setItem('scardplay_preview_video', String(nextVal));
+    } catch {}
+  };
 
   const isUserConnected = Boolean(
     (loginUser && loginUser.trim().length > 0) ||
@@ -1580,6 +1628,139 @@ export default function App() {
                       INSTALAÇÃO DO APP NA SMART TV
                     </h3>
                     <InstallTvButton variant="banner" />
+                  </div>
+
+                  {/* Vercel Fast Origin & Streaming Optimization Settings */}
+                  <div className="bg-[#12070e] border border-amber-500/30 rounded-2xl p-6 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-amber-400" />
+                        <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest">
+                          STREAMING & ECONOMIA DE BANDA (0 GB VERCEL)
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {streamMode === 'direct' ? '⚡ ZERO CONSUMO VERCEL' : streamMode === 'custom' ? '🟣 PROXY EXTERNO ATIVO' : '🟡 PROXY VERCEL ATIVO'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-neutral-300 leading-relaxed">
+                      A Vercel cobra e limita o <strong>Fast Origin Transfer</strong> quando os vídeos passam pela rota <code className="bg-neutral-900 px-1.5 py-0.5 rounded text-amber-300 font-mono">/api/proxy/stream</code>. Use o <strong>Modo Direto</strong> para reproduzir canais e filmes diretamente do seu provedor IPTV sem gastar a cota da Vercel!
+                    </p>
+
+                    {/* Mode Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <button
+                        onClick={() => handleSetStreamMode('direct')}
+                        className={`p-4 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                          streamMode === 'direct'
+                            ? 'bg-emerald-500/10 border-emerald-500/60 shadow-lg shadow-emerald-500/10'
+                            : 'bg-[#0a0507] border-neutral-800 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                              <Zap className="w-4 h-4 text-emerald-400" /> Direto do Provedor
+                            </span>
+                            {streamMode === 'direct' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
+                          </div>
+                          <p className="text-[11px] text-neutral-400 leading-snug">
+                            <strong>0 GB Vercel.</strong> Conecta direto ao seu IPTV. Ideal para Smart TV, TV Box/Android e servidores compatíveis.
+                          </p>
+                        </div>
+                        <span className="mt-3 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                          Recomendado (Zero Cota)
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => handleSetStreamMode('custom')}
+                        className={`p-4 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                          streamMode === 'custom'
+                            ? 'bg-purple-500/10 border-purple-500/60 shadow-lg shadow-purple-500/10'
+                            : 'bg-[#0a0507] border-neutral-800 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                              <Globe className="w-4 h-4 text-purple-400" /> Proxy Externo Grátis
+                            </span>
+                            {streamMode === 'custom' && <CheckCircle className="w-4 h-4 text-purple-400" />}
+                          </div>
+                          <p className="text-[11px] text-neutral-400 leading-snug">
+                            <strong>0 GB Vercel.</strong> Usa Cloudflare Worker ou VPS gratuita externa para navegadores de computador.
+                          </p>
+                        </div>
+                        <span className="mt-3 text-[10px] font-bold text-purple-400 uppercase tracking-wider">
+                          Cloudflare / VPS
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => handleSetStreamMode('proxy')}
+                        className={`p-4 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                          streamMode === 'proxy'
+                            ? 'bg-amber-500/10 border-amber-500/60 shadow-lg shadow-amber-500/10'
+                            : 'bg-[#0a0507] border-neutral-800 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                              <Server className="w-4 h-4 text-amber-400" /> Proxy Vercel
+                            </span>
+                            {streamMode === 'proxy' && <CheckCircle className="w-4 h-4 text-amber-400" />}
+                          </div>
+                          <p className="text-[11px] text-neutral-400 leading-snug">
+                            Passa o vídeo pelos servidores Vercel. <strong>Consome Fast Origin Transfer</strong> (~1 a 3 GB por filme).
+                          </p>
+                        </div>
+                        <span className="mt-3 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                          Consome Cota Vercel
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Custom Proxy URL input if mode === 'custom' */}
+                    {streamMode === 'custom' && (
+                      <div className="bg-[#0a0507] border border-purple-500/40 rounded-xl p-4 space-y-2">
+                        <label className="text-xs font-bold text-purple-300 block">
+                          URL do Proxy Externo (ex: Cloudflare Worker ou VPS):
+                        </label>
+                        <input
+                          type="text"
+                          value={customProxy}
+                          onChange={(e) => handleSetCustomProxy(e.target.value)}
+                          placeholder="https://meu-worker.workers.dev/?url="
+                          className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white placeholder-neutral-500 font-mono focus:outline-none focus:border-purple-400"
+                        />
+                        <p className="text-[10px] text-neutral-400">
+                          Dica: Na Cloudflare o plano gratuito oferece 100.000 requisições/dia sem cobrar por gigabytes trafegados.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Catalog Preview Video Toggle */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-neutral-800/80">
+                      <div>
+                        <p className="text-sm font-bold text-white">Trailer em Vídeo no Catálogo de Filmes</p>
+                        <p className="text-xs text-neutral-400 mt-0.5">
+                          Desative para mostrar apenas imagem na capa do catálogo, poupando gigabytes de vídeo ao navegar pelos filmes.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleTogglePreviewVideo}
+                        className={`px-4 py-2.5 rounded-xl font-bold text-xs border transition cursor-pointer self-start sm:self-auto ${
+                          previewVideoEnabled
+                            ? 'bg-red-600/20 text-red-300 border-red-500/40 hover:bg-red-600/30'
+                            : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
+                        }`}
+                      >
+                        {previewVideoEnabled ? 'Trailer Ativo (Consome Banda)' : 'Econômico: Apenas Capa (Poupe Banda)'}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Local Data Management */}

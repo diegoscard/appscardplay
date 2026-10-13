@@ -14,8 +14,10 @@ export function generateInitials(name: string): string {
 }
 
 /**
- * Returns a playable URL: if the stream is HTTP or needs proxying to bypass CORS/mixed-content,
- * routes through /api/proxy/stream.
+ * Returns a playable URL:
+ * - 'direct': Bypasses Vercel completely (0 GB origin transfer) - uses original stream URL.
+ * - 'custom': Uses an external free proxy (e.g. Cloudflare Worker or VPS).
+ * - 'proxy' (default web fallback): Routes through /api/proxy/stream if mixed-content or CORS requires it.
  */
 export function getPlayableStreamUrl(originalUrl: string): string {
   if (!originalUrl) return '';
@@ -25,7 +27,45 @@ export function getPlayableStreamUrl(originalUrl: string): string {
     return originalUrl;
   }
 
-  // If page is HTTPS and stream is HTTP, or external IPTV server without CORS
+  // Check user preference in localStorage (default to 'direct' on Smart TVs / Android / local, or if user explicitly chose it)
+  let streamMode = 'direct';
+  let customProxy = '';
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const savedMode = window.localStorage.getItem('scardplay_stream_mode');
+      if (savedMode) {
+        streamMode = savedMode;
+      } else {
+        // Auto-detect Smart TV / Android / Cordova / Tizen / Localhost: default to direct
+        const isTvOrNative = 
+          /tizen|webos|smart-tv|android/i.test(navigator.userAgent) ||
+          window.location.protocol === 'http:' ||
+          window.location.hostname === 'localhost';
+        streamMode = isTvOrNative ? 'direct' : 'direct'; // Default to direct to preserve Vercel bandwidth!
+      }
+      customProxy = window.localStorage.getItem('scardplay_custom_proxy') || '';
+    }
+  } catch {
+    // fallback
+  }
+
+  // 1. Direct Mode: Bypasses Vercel completely! 0 GB Origin Transfer!
+  if (streamMode === 'direct') {
+    return originalUrl;
+  }
+
+  // 2. Custom External Proxy (e.g. Cloudflare Worker): 0 GB Vercel Origin Transfer!
+  if (streamMode === 'custom' && customProxy.trim()) {
+    const trimmed = customProxy.trim();
+    if (trimmed.includes('?url=')) {
+      return `${trimmed}${encodeURIComponent(originalUrl)}`;
+    } else {
+      const glue = trimmed.includes('?') ? '&url=' : '?url=';
+      return `${trimmed}${glue}${encodeURIComponent(originalUrl)}`;
+    }
+  }
+
+  // 3. Vercel Proxy (consumes Vercel Fast Origin Transfer)
   const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
   const isHttpStream = originalUrl.startsWith('http://');
 
