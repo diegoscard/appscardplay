@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { VodMovie } from '../types';
 import { getPlayableStreamUrl } from '../utils/m3uParser';
+import { CatalogItemCard } from './CatalogItemCard';
+import { getOrCreateTrailerMetadata, buildDirectTrailerPlaybackUrl } from '../services/trailerRegistry';
 
 interface MoviesScreenProps {
   movies: VodMovie[];
@@ -43,6 +45,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [isMuted, setIsMuted] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [activeCardTrailerId, setActiveCardTrailerId] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -152,11 +155,17 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       return;
     }
 
-    // 1. Consistent start time for this specific movie
-    const snippetStart = getMovieSnippetStart(heroMovie);
+    // 1. Obter metadados do trecho cadastrado uma única vez para este filme
+    const trailerMeta = getOrCreateTrailerMetadata(
+      heroMovie.id,
+      heroMovie.name,
+      rawUrl,
+      'movie'
+    );
+    const snippetStart = trailerMeta.startSec;
 
-    // 2. Direct URL: NEVER touches Vercel /api/proxy/stream!
-    const directTrailerUrl = buildZeroVercelTrailerUrl(rawUrl, snippetStart);
+    // 2. Direct URL: NUNCA passa pela Vercel!
+    const directTrailerUrl = buildDirectTrailerPlaybackUrl(trailerMeta);
 
     const playStream = (srcUrl: string) => {
       if (isCancelled || !video) return;
@@ -665,61 +674,15 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
             <div className="space-y-8">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {displayedMovies.map((movie, idx) => (
-                  <div
+                  <CatalogItemCard
                     key={`${movie.id}_${idx}`}
-                    onClick={() => setSelectedMovie(movie)}
-                    className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
-                  >
-                    {/* Poster Image */}
-                    {movie.posterUrl ? (
-                      <img
-                        src={movie.posterUrl}
-                        alt={movie.name}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 to-neutral-950 flex flex-col items-center justify-center p-3 text-center">
-                        <Film className="w-8 h-8 text-red-500 mb-2 opacity-60" />
-                        <span className="text-[11px] font-bold text-neutral-300 line-clamp-3">
-                          {movie.name}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Dark overlay scrim */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
-
-                    {/* Top Badge: Rating / Year */}
-                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
-                      {movie.rating ? (
-                        <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-amber-400 font-black text-[10px] flex items-center gap-0.5 border border-amber-400/30">
-                          <Star className="w-2.5 h-2.5 fill-amber-400" />
-                          {movie.rating}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {/* Bottom Content */}
-                    <div className="relative z-10 space-y-1">
-                      <h3 className="text-xs font-black text-white line-clamp-2 group-hover:text-amber-300 transition-colors">
-                        {movie.name}
-                      </h3>
-                      <div className="flex items-center justify-between text-[10px] text-neutral-400 font-medium">
-                        <span>{movie.year || movie.category}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPlayMovie(movie);
-                          }}
-                          className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
-                          title="Assistir"
-                        >
-                          <Play className="w-3 h-3 fill-white" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    movie={movie}
+                    index={idx}
+                    activeTrailerId={activeCardTrailerId}
+                    setActiveTrailerId={setActiveCardTrailerId}
+                    onSelectMovie={setSelectedMovie}
+                    onPlayMovie={onPlayMovie}
+                  />
                 ))}
               </div>
 

@@ -137,24 +137,22 @@ app.get('/api/proxy/playlist', async (req: Request, res: Response) => {
   }
 });
 
-// 2. PROXY STREAM ENDPOINT (Handles live HLS, m3u8 manifests, TS chunks, MP4/MKV video files, and redirects)
+// 2. PROXY STREAM ENDPOINT - REGRA: ZERO CONSUMO VERCEL
+// NUNCA transmite nem faz proxy de bytes binários de vídeo através da infraestrutura da Vercel.
+// Redireciona o player imediatamente (HTTP 307) para o servidor de mídia externo ou CDN.
 app.options('/api/proxy/stream', (_req: Request, res: Response) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+  res.setHeader('Access-Control-Expose-Headers', 'Location, Content-Range, Content-Length, Accept-Ranges');
   res.sendStatus(204);
 });
 
-app.all('/api/proxy/stream', async (req: Request, res: Response) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
-    return res.status(405).send('Method not allowed');
-  }
-
+app.all('/api/proxy/stream', (req: Request, res: Response) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+  res.setHeader('Access-Control-Expose-Headers', 'Location, Content-Range, Content-Length, Accept-Ranges');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -165,137 +163,11 @@ app.all('/api/proxy/stream', async (req: Request, res: Response) => {
     return res.status(400).send('Missing url parameter');
   }
 
-  try {
-    const forwardedHeaders: Record<string, string> = {};
-    if (req.headers.range) {
-      forwardedHeaders['Range'] = req.headers.range as string;
-    }
-    if (req.headers['if-range']) {
-      forwardedHeaders['If-Range'] = req.headers['if-range'] as string;
-    }
-
-    const { status, headers: remoteHeaders, bodyStream, finalUrl } = await fetchWithRedirect(
-      targetUrl,
-      forwardedHeaders,
-      5,
-      req.method
-    );
-
-    res.status(status);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
-
-    // Crucial for video seeking and HTML5 partial content in browsers (RFC 7233 requirement)
-    res.setHeader('Accept-Ranges', 'bytes');
-
-    if (remoteHeaders['content-range']) {
-      res.setHeader('Content-Range', remoteHeaders['content-range']);
-    }
-
-    // Determine correct MIME content type based on target URL and remote headers
-    const cleanLowerUrl = targetUrl.toLowerCase();
-    let contentType = remoteHeaders['content-type'];
-    if (
-      !contentType ||
-      contentType === 'application/octet-stream' ||
-      contentType === 'binary/octet-stream' ||
-      contentType.includes('text/html') ||
-      contentType.includes('text/plain') ||
-      contentType === 'video/x-matroska'
-    ) {
-      if (cleanLowerUrl.includes('.m3u8')) {
-        contentType = 'application/vnd.apple.mpegurl';
-      } else if (cleanLowerUrl.endsWith('.mp4') || cleanLowerUrl.includes('/movie/') || cleanLowerUrl.includes('/series/')) {
-        contentType = 'video/mp4';
-      } else if (cleanLowerUrl.endsWith('.mkv')) {
-        contentType = 'video/mp4';
-      } else if (cleanLowerUrl.endsWith('.ts')) {
-        contentType = 'video/mp2t';
-      } else {
-        contentType = 'video/mp4';
-      }
-    }
-    res.setHeader('Content-Type', contentType);
-
-    if (remoteHeaders['content-length']) {
-      res.setHeader('Content-Length', remoteHeaders['content-length']);
-    }
-
-    // If HEAD request, finish headers immediately without sending body stream
-    if (req.method === 'HEAD') {
-      if (typeof (bodyStream as any).destroy === 'function') {
-        (bodyStream as any).destroy();
-      }
-      return res.end();
-    }
-
-    // If it's an HLS manifest, rewrite relative segment paths to route through proxy
-    const isManifest =
-      cleanLowerUrl.includes('.m3u8') ||
-      (typeof contentType === 'string' && (contentType.includes('mpegurl') || contentType.includes('mpegURL')));
-
-    if (isManifest) {
-      const chunks: Buffer[] = [];
-      bodyStream.on('data', (chunk) => chunks.push(chunk));
-      bodyStream.on('error', (err) => {
-        console.warn('Manifest bodyStream error:', err.message);
-        if (!res.headersSent) res.status(502).end();
-      });
-      bodyStream.on('end', () => {
-        let manifestText = Buffer.concat(chunks).toString('utf-8');
-        const baseUrl = new URL(finalUrl);
-
-        // Normalize CRLF to LF so line endings are clean
-        const lines = manifestText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-        const rewritten = lines.map((line) => {
-          const trimmed = line.trim();
-          if (!trimmed) return '';
-          if (!trimmed.startsWith('#')) {
-            let fullSegmentUrl = trimmed;
-            if (!fullSegmentUrl.startsWith('http')) {
-              fullSegmentUrl = new URL(trimmed, baseUrl).toString();
-            }
-            return `/api/proxy/stream?url=${encodeURIComponent(fullSegmentUrl)}`;
-          } else if (trimmed.includes('URI="')) {
-            return trimmed.replace(/URI="([^"]+)"/g, (_, uriVal) => {
-              let fullUri = uriVal;
-              if (!fullUri.startsWith('http')) {
-                fullUri = new URL(uriVal, baseUrl).toString();
-              }
-              return `URI="/api/proxy/stream?url=${encodeURIComponent(fullUri)}"`;
-            });
-          }
-          return line;
-        });
-
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
-        res.send(rewritten.join('\n'));
-      });
-    } else {
-      // Pipe raw video data (TS or MP4 or chunk) directly
-      req.on('close', () => {
-        if (typeof (bodyStream as any).destroy === 'function') {
-          (bodyStream as any).destroy();
-        }
-      });
-      bodyStream.on('error', (err) => {
-        console.warn('Raw video bodyStream error:', err.message);
-        if (!res.headersSent) {
-          res.status(502).end();
-        } else if (!res.writableEnded) {
-          res.destroy();
-        }
-      });
-      bodyStream.pipe(res);
-    }
-  } catch (err: any) {
-    console.error('Stream proxy error:', err.message);
-    if (!res.headersSent) {
-      res.status(502).send(`Stream proxy error: ${err.message}`);
-    }
-  }
+  // ZERO CONSUMO VERCEL:
+  // Redireciona (HTTP 307) o player diretamente para o servidor externo/CDN.
+  // 0 bytes de vídeo trafegam pela Vercel, eliminando 100% do Fast Origin Transfer!
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return res.redirect(307, targetUrl);
 });
 
 // 3. XTREAM CODES DIRECT FAST API (Bypasses downloading 200,000 channels all at once)

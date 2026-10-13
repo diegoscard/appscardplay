@@ -49,12 +49,12 @@ export function getPlayableStreamUrl(originalUrl: string): string {
     // fallback
   }
 
-  // 1. Direct Mode: Bypasses Vercel completely! 0 GB Origin Transfer!
+  // 1. Direct Mode (Padrão): Bypassa a Vercel completamente! 0 GB Origin Transfer!
   if (streamMode === 'direct') {
     return originalUrl;
   }
 
-  // 2. Custom External Proxy (e.g. Cloudflare Worker): 0 GB Vercel Origin Transfer!
+  // 2. Custom External Proxy (ex: Cloudflare Worker gratuito ou VPS próprio): 0 GB Vercel!
   if (streamMode === 'custom' && customProxy.trim()) {
     const trimmed = customProxy.trim();
     if (trimmed.includes('?url=')) {
@@ -65,14 +65,7 @@ export function getPlayableStreamUrl(originalUrl: string): string {
     }
   }
 
-  // 3. Vercel Proxy (consumes Vercel Fast Origin Transfer)
-  const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
-  const isHttpStream = originalUrl.startsWith('http://');
-
-  if (isHttpStream || isHttpsPage || originalUrl.includes('lazercp.sbs') || originalUrl.includes('wordbus.top')) {
-    return `/api/proxy/stream?url=${encodeURIComponent(originalUrl)}`;
-  }
-
+  // 3. Fallback Direto Seguro (Garante ZERO tráfego de vídeo na Vercel)
   return originalUrl;
 }
 
