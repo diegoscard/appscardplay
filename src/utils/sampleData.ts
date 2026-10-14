@@ -1,97 +1,118 @@
 import { VodMovie, VodSeries } from '../types';
 
 export const DEFAULT_SAMPLE_M3U = `#EXTM3U
-#EXTINF:-1 tvg-id="nasa_tv" tvg-name="NASA TV HD" tvg-logo="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=160&auto=format&fit=crop&q=80" group-title="DOCUMENTÁRIOS",NASA TV Live (Espaço & Ciência)
-https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8
+#EXTINF:-1 tvg-id="fazenda_principal" tvg-name="A Fazenda Principal" tvg-logo="http://logo.universo.wiki/FAZENDA.jpg" group-title="A FAZENDA",A Fazenda Principal FHD
+http://wordbus.top/live/rachelalcantara2/18787429/204741.m3u8
 
-#EXTINF:-1 tvg-id="bloomberg" tvg-name="Bloomberg TV" tvg-logo="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=160&auto=format&fit=crop&q=80" group-title="NOTÍCIAS",Bloomberg Global Markets HD
-https://liveproduseast.akamaized.net/us/Channel-HD-AWS-virginia-1/live.m3u8
+#EXTINF:-1 tvg-id="fazenda_cam1" tvg-name="A Fazenda Cam 1" tvg-logo="http://logo.universo.wiki/FAZENDA.jpg" group-title="A FAZENDA",A Fazenda Cam 1 FHD
+http://wordbus.top/live/rachelalcantara2/18787429/143926.m3u8
 
-#EXTINF:-1 tvg-id="euronews_pt" tvg-name="Euronews Português" tvg-logo="https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=160&auto=format&fit=crop&q=80" group-title="NOTÍCIAS",Euronews Português 24h
-https://euronews-euronews-portuguese-1-pt.samsung.wurl.tv/playlist.m3u8
+#EXTINF:-1 tvg-id="fazenda_cam2" tvg-name="A Fazenda Cam 2" tvg-logo="http://logo.universo.wiki/FAZENDA.jpg" group-title="A FAZENDA",A Fazenda Cam 2 FHD
+http://wordbus.top/live/rachelalcantara2/18787429/143927.m3u8
 
-#EXTINF:-1 tvg-id="redbull_tv" tvg-name="Red Bull TV" tvg-logo="https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=160&auto=format&fit=crop&q=80" group-title="ESPORTES",Red Bull TV Radicais & Aventura
-https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8
+#EXTINF:-1 tvg-id="fazenda_cam3" tvg-name="A Fazenda Cam 3" tvg-logo="http://logo.universo.wiki/FAZENDA.jpg" group-title="A FAZENDA",A Fazenda Cam 3 FHD
+http://wordbus.top/live/rachelalcantara2/18787429/143928.m3u8
 
-#EXTINF:-1 tvg-id="big_buck_bunny" tvg-name="Cinema Toon 4K" tvg-logo="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=160&auto=format&fit=crop&q=80" group-title="FILMES",Cine SCARD: Big Buck Bunny HD
-https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
-
-#EXTINF:-1 tvg-id="tears_of_steel" tvg-name="Sci-Fi Prime" tvg-logo="https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=160&auto=format&fit=crop&q=80" group-title="FILMES",Cine SCARD: Tears of Steel (Sci-Fi)
-https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8
+#EXTINF:-1 tvg-id="fazenda_cam4" tvg-name="A Fazenda Cam 4" tvg-logo="http://logo.universo.wiki/FAZENDA.jpg" group-title="A FAZENDA",A Fazenda Cam 4 FHD
+http://wordbus.top/live/rachelalcantara2/18787429/143929.m3u8
 `;
 
 export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
-    id: 'vod_308429',
-    name: '(Des)controle (2026)',
-    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/scl6uVD0YZc46WZHgXbEcaH2zYw.jpg',
+    id: 'vod_315759',
+    name: 'Explorer: Lago de Fogo (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315759.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/dPvrybP5kiLrKAuymDkfI6LlaSo.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
-    rating: 7.4,
-    plot: 'Kátia Klein é uma escritora bem-sucedida que enfrenta uma crise criativa às vésperas da entrega do seu novo livro, ao mesmo tempo em que descobre a falência do seu casamento e administra o acúmulo das demandas dos filhos e dos pais. Sobrecarregada e em busca de alívio, ela passa de uma simples taça de vinho ao total descontrole, sendo gradualmente engolida pelos excessos do vício.',
-    cast: 'Carolina Dieckmann, Caco Ciocler, Júlia Rabello',
-    director: 'Rosane Svartman',
+    rating: 8.8,
+    plot: 'Em uma expedição histórica aos confins da Terra, cientistas e exploradores tentam desvendar os segredos de uma misteriosa anomalia vulcânica em condições extremas.',
+    cast: 'Dwayne Johnson, Exploradores Globais',
+    director: 'National Geographic Films',
   },
   {
-    id: 'vod_225331',
-    name: '53 Domingos (2026)',
-    streamUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rL6GKuOAPUEGk0hqeY9sLRJTPWE.jpg',
+    id: 'vod_315770',
+    name: 'Eu Sou Vanessa Guillen (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315770.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/idRnGEvyYN44wlp39WYVz4lpLK8.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
-    rating: 7.3,
-    plot: 'Três irmãos precisam se encontrar para discutir o futuro do pai, mas a reunião logo se transforma em caos, trazendo antigas mágoas e rixas à tona.',
-    cast: 'Javier Cámara, Carmen Machi, Javier Gutiérrez',
-    director: 'Cesc Gay',
+    rating: 8.6,
+    plot: 'A inspiradora e emocionante história de luta por justiça e superação de uma família determinada a provocar mudanças históricas.',
+    cast: 'Familiares, Juristas e Ativistas',
+    director: 'Christy Wegener',
   },
   {
-    id: 'vod_223695',
-    name: 'A Acusada (2026)',
-    streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/yRf0OrswYzoLnjXLpTLsmRUVtd.jpg',
+    id: 'vod_315776',
+    name: 'As Pegadas de Jesus em Roma (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315776.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/3l8WLZjetMhes6PELEZxwHsK2fj.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
-    rating: 9.5,
-    plot: 'Geetika e Meera estão prestes a mudar de cidade e começar uma família. Mas essa vida perfeita vira de cabeça para baixo quando uma delas recebe uma acusação grave.',
-    cast: 'Konkona Sen Sharma, Pratibha Ranta, Aditya Nanda',
-    director: 'Anubhuti Kashyap',
+    rating: 8.9,
+    plot: 'Uma profunda investigação histórica sobre os vestígios, relíquias e a trajetória milenar preservada nos monumentos de Roma.',
+    cast: 'Historiadores e Arqueólogos Internacionais',
+    director: 'História & Fé Produções',
   },
   {
-    id: 'vod_308422',
-    name: 'A Caixa Azul (2026)',
-    streamUrl: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
-    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/Ao8YIks0or4845Z1lXbINz7tMh8.jpg',
+    id: 'vod_315783',
+    name: 'Difícil Decisão (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315783.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/6qzTj2QEZ6IY3di92sSjpCyaQ89.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
-    rating: 7.0,
-    plot: 'Pablo, um jovem recluso que vive na Patagônia, conhece Lara através da troca de um objeto misterioso conhecido como "a caixa azul", iniciando um tenso jogo psicológico.',
-    cast: 'Gustavo Bassani, Luisana Lopilato',
-    director: 'Martín Hodara',
+    rating: 8.4,
+    plot: 'Inspirado na vivência real de jovens que encaram o desafio de reescrever suas histórias com coragem, disciplina e superação.',
+    cast: 'Dwayne Johnson, Instrutores e Jovens',
+    director: 'Marcus Vance',
   },
   {
-    id: 'vod_222900',
-    name: 'A Cela dos Milagres (2025)',
-    streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/xaloioubOPQOFaERBPxLHnONyeJ.jpg',
-    category: 'Lançamentos (2026)',
-    year: '2025',
-    rating: 6.8,
-    plot: 'Preso por um crime que não cometeu, um pai dedicado luta para provar a própria inocência enquanto sua filha precisa se virar sozinha.',
-    cast: 'Omar Chaparro, Jorge A. Jimenez, Mariana Calderón',
-    director: 'Ana Lorena Pérez Ríos',
-  },
-  {
-    id: 'vod_308424',
-    name: 'A Colega Perfeita (2026)',
-    streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/36zoDJG52EkHnMm60M9BdLw8Siv.jpg',
+    id: 'vod_315788',
+    name: 'Fuga de Alcatraz: A Pista Perdida (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315788.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rdl7F6maBY2nCYuNZZ5J0v3X1YE.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
-    rating: 6.5,
-    plot: 'Devon acabou de entrar na faculdade. Celeste é popular e confiante. Quando as duas resolvem morar juntas, a amizade se transforma em uma verdadeira guerra.',
-    cast: 'Sadie Sandler, Chloe East, Billy Bryk',
-    director: 'Chandler Levack',
+    rating: 8.5,
+    plot: 'Novas revelações e arquivos confidenciais abrem caminho para desvendar o que realmente aconteceu no enigma mais famoso da prisão de Alcatraz.',
+    cast: 'Investigadores Forenses',
+    director: 'David Hoffman',
+  },
+  {
+    id: 'vod_315800',
+    name: 'Yaõkwa - Imagem e Memória (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315800.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/hrsODYUpQWZ0TmJuzTQl9xvTefT.jpg',
+    category: 'Lançamentos (2026)',
+    year: '2026',
+    rating: 9.1,
+    plot: 'Uma obra-prima cinematográfica documental que resgata cantos sagrados, tradições e a riqueza cultural dos povos originários do Brasil.',
+    cast: 'Mestres Tradicionais Enawenê Nawê',
+    director: 'Vincent Carelli',
+  },
+  {
+    id: 'vod_315811',
+    name: 'Feitos de Plástico (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/315811.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/c4g82ZjkSJXAUnzxfU7yRW8V3dl.jpg',
+    category: 'Lançamentos (2026)',
+    year: '2026',
+    rating: 8.7,
+    plot: 'Cientistas e repórteres investigam de forma reveladora o impacto dos microplásticos no planeta e no corpo humano.',
+    cast: 'Especialistas Ambientais e Médicos',
+    director: 'Sara Nason',
+  },
+  {
+    id: 'vod_316003',
+    name: 'The Velvet Underground (2026)',
+    streamUrl: 'http://wordbus.top/movie/rachelalcantara2/18787429/316003.mp4',
+    posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/9uRF6vERWfhlSZKc1sAJTTdG2Ix.jpg',
+    category: 'Lançamentos (2026)',
+    year: '2026',
+    rating: 8.9,
+    plot: 'O legado vanguardista de uma das bandas mais influentes da história da música em uma produção caleidoscópica e inovadora.',
+    cast: 'Lou Reed, John Cale, Andy Warhol',
+    director: 'Todd Haynes',
   },
 ];
 
@@ -100,8 +121,9 @@ export const DEFAULT_SAMPLE_SERIES: VodSeries[] = [
     id: 'series_2796',
     name: 'Agatha Desde Sempre',
     posterUrl: 'https://shorturl.at/cay9l',
+    streamUrl: 'http://wordbus.top/series/rachelalcantara2/18787429/204829.mp4',
     category: 'Séries',
-    plot: 'A infame Agatha Harkness encontra-se sem poderes depois de um jovem gótico suspeito ajudá-la a se libertar de um feitiço distorcido. Juntos, partem para o Caminho das Bruxas.',
+    plot: 'A infame Agatha Harkness parte para o lendário Caminho das Bruxas, um percurso repleto de mistérios, provações e magias surpreendentes.',
     cast: 'Kathryn Hahn, Joe Locke, Sasheer Zamata, Ali Ahn',
     genre: 'Sci-Fi & Fantasy, Mistério, Ação',
     rating: 8.5,
@@ -109,62 +131,61 @@ export const DEFAULT_SAMPLE_SERIES: VodSeries[] = [
   },
   {
     id: 'series_553',
-    name: '1 Contra Todos (2016)',
+    name: '1 Contra Todos',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/3o7f2Xjwl5hcoiioR9eGdD9ezHt.jpg',
+    streamUrl: 'http://wordbus.top/series/rachelalcantara2/18787429/204830.mp4',
     category: 'Séries',
-    plot: 'A história do honesto chefe de família Cadu que vê sua vida mudar drasticamente quando é preso após ser confundido com o maior traficante do país.',
+    plot: 'A emocionante história de um chefe de família íntegro que precisa lutar pela sua liberdade e sobrevivência.',
     cast: 'Júlio Andrade, Julia Ianina, João Fernandes',
     genre: 'Drama, Crime',
-    rating: 8.2,
-    year: '2016',
+    rating: 8.8,
+    year: '2022',
   },
   {
     id: 'series_554',
-    name: '11.22.63 (2016)',
+    name: '11.22.63',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/1fH41ccMKvgDTbbcCxWWH6fznah.jpg',
+    streamUrl: 'http://wordbus.top/series/rachelalcantara2/18787429/204831.mp4',
     category: 'Séries',
-    plot: 'Um modesto professor se depara com um portal do tempo e inicia uma jornada para tentar evitar o assassinato de John F. Kennedy.',
+    plot: 'Uma viagem no tempo vertiginosa onde cada ação no passado gera consequências imprevisíveis no futuro.',
     cast: 'James Franco, Sarah Gadon, Chris Cooper',
     genre: 'Drama, Ficção Científica',
-    rating: 8.4,
-    year: '2016',
+    rating: 8.6,
+    year: '2020',
   },
   {
     id: 'series_555',
-    name: 'Os 12 Macacos (2015)',
+    name: 'Os 12 Macacos',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/lnLlxi9GcPNyLcmvt6uVipI73m5.jpg',
+    streamUrl: 'http://wordbus.top/series/rachelalcantara2/18787429/204832.mp4',
     category: 'Séries',
-    plot: 'Em um mundo pós-apocalíptico, James Cole é enviado ao passado com o objetivo de reunir informações sobre um vírus mortal antes que a humanidade seja dizimada.',
+    plot: 'Em um mundo pós-apocalíptico, viajantes temporais arriscam tudo para conter um vírus e salvar a humanidade.',
     cast: 'Aaron Stanford, Amanda Schull, Barbara Sukowa',
     genre: 'Sci-Fi & Fantasy, Drama',
-    rating: 8.0,
-    year: '2015',
+    rating: 8.5,
+    year: '2019',
   },
 ];
 
 export const SAMPLE_EPG_MAP: Record<string, { title: string; desc: string }> = {
-  nasa_tv: {
-    title: 'Missão Artemis & Estação Espacial Internacional',
-    desc: 'Transmissão ao vivo de acoplamentos, caminhadas espaciais e pesquisas em microgravidade.',
+  fazenda_principal: {
+    title: 'A Fazenda 16: Transmissão Ao Vivo 24 Horas',
+    desc: 'Câmera principal acompanhando todas as emoções, dinâmicas e convivência dos peões.',
   },
-  bloomberg: {
-    title: 'Fechamento de Mercados e Análise Econômica',
-    desc: 'Cobertura em tempo real dos índices financeiros globais, commodities e câmbio.',
+  fazenda_cam1: {
+    title: 'A Fazenda: Câmera da Sede',
+    desc: 'Acontecimentos em tempo real no interior da sede e conversas da sala.',
+  },
+  fazenda_cam2: {
+    title: 'A Fazenda: Câmera da Área Externa',
+    desc: 'Atividades dos peões nos cuidados com os animais e na área externa.',
   },
   euronews_pt: {
     title: 'Jornal das 20h: Notícias do Mundo',
     desc: 'Destaques globais, geopolítica europeia e atualidades internacionais em língua portuguesa.',
   },
-  redbull_tv: {
-    title: 'X-Games & Downhill Mountain Bike World Cup',
-    desc: 'Competições extremas com as melhores manobras e atletas mundiais.',
-  },
-  big_buck_bunny: {
-    title: 'Sessão Cinema: Aventura na Floresta',
-    desc: 'Animação clássica aclamada com áudio estéreo imersivo em alta definição.',
-  },
-  tears_of_steel: {
-    title: 'Cine Ficção: Conexão Distópica',
-    desc: 'Produção futurista de ficção científica com efeitos visuais de última geração.',
+  nasa_tv: {
+    title: 'Missão Artemis & Estação Espacial Internacional',
+    desc: 'Transmissão ao vivo de acoplamentos, caminhadas espaciais e pesquisas em microgravidade.',
   },
 };

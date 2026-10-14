@@ -45,6 +45,7 @@ export interface VodSeries {
   id: string;
   name: string;
   posterUrl?: string;
+  streamUrl?: string;
   category: string;
   plot?: string;
   cast?: string;

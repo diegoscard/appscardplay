@@ -1,8 +1,12 @@
-import { Channel } from '../types';
+import { Channel, VodMovie, VodSeries } from '../types';
 
 export interface ParsedM3uResult {
   channels: Channel[];
   categories: string[];
+  movies: VodMovie[];
+  movieCategories: string[];
+  series: VodSeries[];
+  seriesCategories: string[];
 }
 
 export function generateInitials(name: string): string {
@@ -67,16 +71,6 @@ export function ensureUniqueChannelIds(channels: Channel[]): Channel[] {
   });
 }
 
-const VERIFIED_VOD_FALLBACKS = [
-  'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-  'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-  'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-  'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
-  'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-  'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-  'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8',
-];
-
 export function ensureUniqueVodIds<T extends { id: string; streamUrl?: string }>(items: T[]): T[] {
   const seen = new Set<string>();
   return items.map((item, idx) => {
@@ -98,25 +92,19 @@ export function ensureUniqueVodIds<T extends { id: string; streamUrl?: string }>
       } catch {}
     }
 
-    if (
-      !streamUrl ||
-      streamUrl.includes('bitdash') ||
-      streamUrl.includes('jwplayer') ||
-      streamUrl.includes('longtailvideo') ||
-      streamUrl.includes('samsung.wurl.tv') ||
-      streamUrl.includes('liveproduseast')
-    ) {
-      streamUrl = VERIFIED_VOD_FALLBACKS[idx % VERIFIED_VOD_FALLBACKS.length];
-    }
-
+    // Keep real authentic stream URL intact without generic overwrites
     return { ...item, id, streamUrl };
   });
 }
 
-export function parseM3u(content: string, maxChannels = 3000): ParsedM3uResult {
+export function parseM3u(content: string, maxItems = 25000): ParsedM3uResult {
   const lines = content.split(/\r?\n/);
   const channels: Channel[] = [];
   const categoriesSet = new Set<string>();
+  const movies: VodMovie[] = [];
+  const movieCategoriesSet = new Set<string>();
+  const series: VodSeries[] = [];
+  const seriesCategoriesSet = new Set<string>();
   const usedIds = new Set<string>();
 
   let currentExtInf: string | null = null;
@@ -140,12 +128,119 @@ export function parseM3u(content: string, maxChannels = 3000): ParsedM3uResult {
       const isRelativeOrData = line.startsWith('/') || line.startsWith('blob:') || line.startsWith('data:');
 
       if (isHttp || isRtmp || isRtsp || isRelativeOrData) {
-        const channel = parseChannelEntry(currentExtInf, line, order++, usedIds);
-        channels.push(channel);
-        categoriesSet.add(channel.category);
+        const streamUrl = line;
+        const extInf = currentExtInf;
         currentExtInf = null;
+        order++;
 
-        if (channels.length >= maxChannels) {
+        const tvgId = extInf ? extractAttribute(extInf, /tvg-id=["']?([^"'\s,]+)["']?/i) : null;
+        const tvgName = extInf ? extractAttribute(extInf, /tvg-name=["']?([^"']+)["']?/i) : null;
+        const tvgLogo = extInf ? extractAttribute(extInf, /tvg-logo=["']?([^"']+)["']?/i) : null;
+        const groupTitle = extInf ? extractAttribute(extInf, /group-title=["']?([^"']+)["']?/i) : null;
+
+        let displayName = '';
+        if (extInf) {
+          const commaIndex = extInf.lastIndexOf(',');
+          if (commaIndex !== -1 && commaIndex < extInf.length - 1) {
+            displayName = extInf.substring(commaIndex + 1).trim();
+          } else {
+            displayName = tvgName || `Item ${order}`;
+          }
+        } else {
+          displayName = `Item ${order}`;
+        }
+        if (!displayName) displayName = `Item ${order}`;
+
+        const finalCategory = groupTitle && groupTitle.trim().length > 0 ? groupTitle.trim() : 'OUTROS';
+        const groupLower = finalCategory.toLowerCase();
+        const urlLower = streamUrl.toLowerCase();
+
+        // Unique ID generation
+        let baseId = tvgId || `item_${displayName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+        if (!baseId || baseId === '_') baseId = `item_${order}`;
+        let finalId = baseId;
+        if (usedIds.has(finalId)) finalId = `${baseId}_${order}`;
+        while (usedIds.has(finalId)) {
+          finalId = `${baseId}_${order}_${Math.random().toString(36).substring(2, 6)}`;
+        }
+        usedIds.add(finalId);
+
+        // Detect if entry is a Series
+        const isSeries =
+          urlLower.includes('/series/') ||
+          groupLower.includes('série') ||
+          groupLower.includes('serie') ||
+          groupLower.includes('series') ||
+          groupLower.includes('temporada') ||
+          groupLower.includes('season') ||
+          groupLower.includes('novela') ||
+          groupLower.includes('animes') ||
+          groupLower.includes('desenhos');
+
+        // Detect if entry is a VOD Movie
+        const isMovie =
+          !isSeries && (
+            urlLower.includes('/movie/') ||
+            urlLower.endsWith('.mp4') ||
+            urlLower.endsWith('.mkv') ||
+            urlLower.endsWith('.avi') ||
+            urlLower.includes('.mp4?') ||
+            urlLower.includes('.mkv?') ||
+            groupLower.includes('filme') ||
+            groupLower.includes('filmes') ||
+            groupLower.includes('movie') ||
+            groupLower.includes('vod') ||
+            groupLower.includes('cinema') ||
+            groupLower.includes('cine') ||
+            groupLower.includes('lançamento') ||
+            groupLower.includes('lançamentos') ||
+            groupLower.includes('telecine') ||
+            groupLower.includes('hbo max') ||
+            groupLower.includes('prime video') ||
+            groupLower.includes('disney+') ||
+            groupLower.includes('paramount+') ||
+            groupLower.includes('4k*')
+          );
+
+        if (isSeries) {
+          series.push({
+            id: `series_${finalId}`,
+            name: displayName,
+            posterUrl: tvgLogo || undefined,
+            category: finalCategory,
+            plot: `Conteúdo da série "${displayName}" da sua lista IPTV.`,
+            rating: 8.5,
+          });
+          seriesCategoriesSet.add(finalCategory);
+        } else if (isMovie) {
+          const yearMatch = displayName.match(/\b(19\d\d|20\d\d)\b/);
+          movies.push({
+            id: `vod_${finalId}`,
+            name: displayName,
+            streamUrl,
+            posterUrl: tvgLogo || undefined,
+            category: finalCategory,
+            year: yearMatch ? yearMatch[1] : undefined,
+            rating: 8.0,
+            plot: `Filme "${displayName}" da sua lista IPTV.`,
+          });
+          movieCategoriesSet.add(finalCategory);
+        } else {
+          channels.push({
+            id: finalId,
+            name: displayName,
+            streamUrl,
+            logoUrl: tvgLogo || undefined,
+            category: finalCategory,
+            tvgId: tvgId || undefined,
+            tvgName: tvgName || undefined,
+            orderIndex: order,
+            initials: generateInitials(displayName),
+          });
+          categoriesSet.add(finalCategory);
+        }
+
+        if (channels.length + movies.length + series.length >= maxItems) {
           break;
         }
       }
@@ -153,15 +248,22 @@ export function parseM3u(content: string, maxChannels = 3000): ParsedM3uResult {
   }
 
   // Ensure "OUTROS" is at end if present
-  const categoriesList = Array.from(categoriesSet);
-  const sortedCategories = categoriesList.filter((c) => c !== 'OUTROS');
-  if (categoriesSet.has('OUTROS')) {
-    sortedCategories.push('OUTROS');
-  }
+  const sortedCategories = Array.from(categoriesSet).filter((c) => c !== 'OUTROS');
+  if (categoriesSet.has('OUTROS')) sortedCategories.push('OUTROS');
+
+  const sortedMovieCategories = Array.from(movieCategoriesSet).filter((c) => c !== 'OUTROS');
+  if (movieCategoriesSet.has('OUTROS')) sortedMovieCategories.push('OUTROS');
+
+  const sortedSeriesCategories = Array.from(seriesCategoriesSet).filter((c) => c !== 'OUTROS');
+  if (seriesCategoriesSet.has('OUTROS')) sortedSeriesCategories.push('OUTROS');
 
   return {
     channels,
     categories: sortedCategories,
+    movies,
+    movieCategories: sortedMovieCategories,
+    series,
+    seriesCategories: sortedSeriesCategories,
   };
 }
 

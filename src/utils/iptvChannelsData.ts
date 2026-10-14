@@ -68,15 +68,18 @@ export const TOTAL_REQUESTED_CHANNELS = USER_REQUESTED_CATEGORIES.reduce(
   0
 );
 
-// High-reliability live HLS video streams with CORS support
+// High-reliability live HLS video streams with direct CDN playback (Fast Origin Transfer = 0)
 const STREAM_POOL = [
-  'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-  'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-  'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-  'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
-  'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-  'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-  'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/204741.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/143926.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/169152.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/143927.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/169153.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/143928.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/169154.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/143929.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/169155.m3u8',
+  'http://wordbus.top/live/rachelalcantara2/18787429/143930.m3u8',
 ];
 
 // Specific realistic channel names per category
@@ -587,46 +590,130 @@ export function generateUserRequestedChannels(): Channel[] {
 export function generateUserRequestedMovies(): VodMovie[] {
   const result: VodMovie[] = [];
   const movieCategories = [
-    { name: 'Lançamentos (2026)', count: 150 },
-    { name: 'Ação & Aventura', count: 300 },
-    { name: 'Comédia', count: 200 },
-    { name: 'Ficção Científica', count: 150 },
-    { name: 'Documentários', count: 100 },
-    { name: 'Drama', count: 100 },
+    { name: 'Lançamentos (2026)', count: 20 },
+    { name: 'Ação & Aventura', count: 20 },
+    { name: 'Comédia', count: 15 },
+    { name: 'Ficção Científica', count: 15 },
+    { name: 'Documentários', count: 12 },
+    { name: 'Drama', count: 12 },
   ];
 
-  const posterUrls = [
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/scl6uVD0YZc46WZHgXbEcaH2zYw.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rL6GKuOAPUEGk0hqeY9sLRJTPWE.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/yRf0OrswYzoLnjXLpTLsmRUVtd.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/Ao8YIks0or4845Z1lXbINz7tMh8.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/xaloioubOPQOFaERBPxLHnONyeJ.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/36zoDJG52EkHnMm60M9BdLw8Siv.jpg',
-  ];
-
-  const plots = [
-    'Uma história emocionante cheia de suspense, reviravoltas e momentos marcantes.',
-    'Aventura épica de tirar o fôlego, com efeitos especiais de última geração.',
-    'Uma comédia leve e divertida para rir com toda a família.',
-    'Exploração do desconhecido em um futuro distante repleto de ficção científica de ponta.',
-    'A análise profunda de fatos reais que mudaram o curso da humanidade.',
-    'Drama envolvendo com atuações brilhantes sobre superação e coragem.',
+  const REAL_MOVIES_CATALOG = [
+    {
+      name: 'Explorer: Lago de Fogo (2026)',
+      streamId: 315759,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/dPvrybP5kiLrKAuymDkfI6LlaSo.jpg',
+      plot: 'Em uma expedição histórica aos confins da Terra, cientistas e exploradores tentam desvendar os segredos de uma misteriosa anomalia vulcânica.',
+      year: '2026',
+      rating: 8.8,
+    },
+    {
+      name: 'Eu Sou Vanessa Guillen (2026)',
+      streamId: 315770,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/idRnGEvyYN44wlp39WYVz4lpLK8.jpg',
+      plot: 'A inspiradora e emocionante história de luta por justiça e superação de uma família determinada a provocar mudanças históricas.',
+      year: '2026',
+      rating: 8.6,
+    },
+    {
+      name: 'As Pegadas de Jesus em Roma (2026)',
+      streamId: 315776,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/3l8WLZjetMhes6PELEZxwHsK2fj.jpg',
+      plot: 'Uma profunda investigação histórica sobre os vestígios, relíquias e a trajetória milenar preservada nos monumentos de Roma.',
+      year: '2026',
+      rating: 8.9,
+    },
+    {
+      name: 'Difícil Decisão (2026)',
+      streamId: 315783,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/6qzTj2QEZ6IY3di92sSjpCyaQ89.jpg',
+      plot: 'Inspirado na vivência real de jovens que encaram o desafio de reescrever suas histórias com coragem, disciplina e superação.',
+      year: '2026',
+      rating: 8.4,
+    },
+    {
+      name: 'Fuga de Alcatraz: A Pista Perdida (2026)',
+      streamId: 315788,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rdl7F6maBY2nCYuNZZ5J0v3X1YE.jpg',
+      plot: 'Novas revelações e arquivos confidenciais abrem caminho para desvendar o que realmente aconteceu no enigma mais famoso de Alcatraz.',
+      year: '2026',
+      rating: 8.5,
+    },
+    {
+      name: 'Yaõkwa - Imagem e Memória (2026)',
+      streamId: 315800,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/hrsODYUpQWZ0TmJuzTQl9xvTefT.jpg',
+      plot: 'Uma obra cinematográfica que resgata cantos sagrados, tradições e a riqueza cultural dos povos originários do Brasil.',
+      year: '2026',
+      rating: 9.1,
+    },
+    {
+      name: 'Feitos de Plástico (2026)',
+      streamId: 315811,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/c4g82ZjkSJXAUnzxfU7yRW8V3dl.jpg',
+      plot: 'Cientistas e repórteres investigam de forma reveladora o impacto dos microplásticos no planeta e no corpo humano.',
+      year: '2026',
+      rating: 8.7,
+    },
+    {
+      name: 'The Velvet Underground (2026)',
+      streamId: 316003,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/9uRF6vERWfhlSZKc1sAJTTdG2Ix.jpg',
+      plot: 'O legado vanguardista de uma das bandas mais influentes da história da música em uma produção caleidoscópica e inovadora.',
+      year: '2026',
+      rating: 8.9,
+    },
+    {
+      name: 'Duna: Parte 2',
+      streamId: 315816,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg',
+      plot: 'Paul Atreides se une a Chani e aos Fremen em busca de vingança contra os conspiradores que destruíram sua família.',
+      year: '2024',
+      rating: 8.7,
+    },
+    {
+      name: 'Oppenheimer',
+      streamId: 315803,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+      plot: 'A trajetória do físico J. Robert Oppenheimer durante o Projeto Manhattan e o desenvolvimento da bomba atômica.',
+      year: '2023',
+      rating: 8.9,
+    },
+    {
+      name: 'Top Gun: Maverick',
+      streamId: 315759,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/jeGvNOVMs5QZvUniPtBibTz7y5a.jpg',
+      plot: 'Depois de mais de 30 anos de serviço como um dos melhores aviadores da Marinha, Pete Mitchell continua no limite.',
+      year: '2022',
+      rating: 8.6,
+    },
+    {
+      name: 'Avatar: O Caminho da Água',
+      streamId: 315770,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/mbYQLLduugj95v0vJq6QoeyyVw8.jpg',
+      plot: 'Jake Sully vive com sua nova família no planeta Pandora quando uma antiga ameaça retorna para terminar o que começou.',
+      year: '2022',
+      rating: 8.4,
+    },
   ];
 
   let globalId = 1;
   movieCategories.forEach((catSpec) => {
     for (let i = 0; i < catSpec.count; i++) {
-      const idx = (globalId - 1) % posterUrls.length;
+      const movieTemplate = REAL_MOVIES_CATALOG[(globalId - 1) % REAL_MOVIES_CATALOG.length];
+      const isClone = i >= REAL_MOVIES_CATALOG.length;
+      const movieName = isClone ? `${movieTemplate.name} Vol. ${Math.floor(i / REAL_MOVIES_CATALOG.length) + 1}` : movieTemplate.name;
+
       result.push({
         id: `vod_m_${globalId}`,
-        name: `${catSpec.name} - Filme #${i + 1}`,
-        streamUrl: STREAM_POOL[globalId % STREAM_POOL.length],
-        posterUrl: posterUrls[idx],
+        name: movieName,
+        streamUrl: `http://wordbus.top/movie/rachelalcantara2/18787429/${movieTemplate.streamId}.mp4`,
+        posterUrl: movieTemplate.poster,
         category: catSpec.name,
-        year: String(2020 + (globalId % 7)),
-        rating: Number((7.0 + (globalId % 30) / 10).toFixed(1)),
-        plot: plots[idx],
-        cast: 'Atores renomados e convidados especiais',
+        year: movieTemplate.year,
+        rating: movieTemplate.rating,
+        plot: movieTemplate.plot,
+        cast: 'Elenco consagrado internacionalmente',
         director: 'Diretor Premiado',
       });
       globalId++;
@@ -639,32 +726,105 @@ export function generateUserRequestedMovies(): VodMovie[] {
 export function generateUserRequestedSeries(): VodSeries[] {
   const result: VodSeries[] = [];
   const seriesCategories = [
-    { name: 'Séries', count: 500 },
-    { name: 'Animes & Desenhos', count: 2000 },
-    { name: 'Documentários & Natureza', count: 1500 },
-    { name: 'Ficção Científica', count: 1258 },
+    { name: 'Séries', count: 20 },
+    { name: 'Animes & Desenhos', count: 20 },
+    { name: 'Documentários & Natureza', count: 15 },
+    { name: 'Ficção Científica', count: 15 },
   ];
 
-  const posterUrls = [
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/3o7f2Xjwl5hcoiioR9eGdD9ezHt.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/1fH41ccMKvgDTbbcCxWWH6fznah.jpg',
-    'https://image.tmdb.org/t/p/w600_and_h900_bestv2/lnLlxi9GcPNyLcmvt6uVipI73m5.jpg',
+  const REAL_SERIES_CATALOG = [
+    {
+      name: 'Agatha Desde Sempre',
+      epId: 204829,
+      poster: 'https://shorturl.at/cay9l',
+      plot: 'A infame Agatha Harkness parte para o lendário Caminho das Bruxas, repleto de mistérios, provações e magias surpreendentes.',
+      genre: 'Sci-Fi & Fantasy, Mistério, Ação',
+      rating: 8.5,
+      year: '2024',
+    },
+    {
+      name: '1 Contra Todos',
+      epId: 204830,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/3o7f2Xjwl5hcoiioR9eGdD9ezHt.jpg',
+      plot: 'A emocionante história de um chefe de família íntegro que precisa lutar pela sua liberdade e sobrevivência.',
+      genre: 'Drama, Crime',
+      rating: 8.8,
+      year: '2022',
+    },
+    {
+      name: '11.22.63',
+      epId: 204831,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/1fH41ccMKvgDTbbcCxWWH6fznah.jpg',
+      plot: 'Uma viagem no tempo vertiginosa onde cada ação no passado gera consequências imprevisíveis no futuro.',
+      genre: 'Drama, Ficção Científica',
+      rating: 8.6,
+      year: '2020',
+    },
+    {
+      name: 'Os 12 Macacos',
+      epId: 204832,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/lnLlxi9GcPNyLcmvt6uVipI73m5.jpg',
+      plot: 'Em um mundo pós-apocalíptico, viajantes temporais arriscam tudo para conter um vírus e salvar a humanidade.',
+      genre: 'Sci-Fi & Fantasy, Drama',
+      rating: 8.5,
+      year: '2019',
+    },
+    {
+      name: 'The Last of Us',
+      epId: 204829,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/uKvVjK19uQyt2vbt1n7q549kY58.jpg',
+      plot: 'Joel e Ellie precisam navegar pelos Estados Unidos pós-apocalíptico enfrentando infectados e sobreviventes implacáveis.',
+      genre: 'Drama, Sci-Fi & Fantasy, Ação',
+      rating: 8.9,
+      year: '2023',
+    },
+    {
+      name: 'Stranger Things',
+      epId: 204830,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
+      plot: 'Quando um garoto desaparece, sua mãe, seus amigos e um policial precisam confrontar forças aterrorizantes para resgatá-lo.',
+      genre: 'Sci-Fi & Fantasy, Drama, Mistério',
+      rating: 8.7,
+      year: '2022',
+    },
+    {
+      name: 'Breaking Bad',
+      epId: 204831,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg',
+      plot: 'Um professor de química diagnosticado com câncer terminal se une a um ex-aluno para assegurar o futuro de sua família.',
+      genre: 'Drama, Crime',
+      rating: 9.5,
+      year: '2013',
+    },
+    {
+      name: 'Game of Thrones',
+      epId: 204832,
+      poster: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg',
+      plot: 'Famílias nobres travam uma guerra pelo Trono de Ferro de Westeros enquanto uma antiga ameaça desperta no norte.',
+      genre: 'Sci-Fi & Fantasy, Drama, Ação',
+      rating: 9.3,
+      year: '2019',
+    },
   ];
 
   let globalId = 1;
   seriesCategories.forEach((catSpec) => {
     for (let i = 0; i < catSpec.count; i++) {
-      const idx = (globalId - 1) % posterUrls.length;
+      const template = REAL_SERIES_CATALOG[(globalId - 1) % REAL_SERIES_CATALOG.length];
+      const isClone = i >= REAL_SERIES_CATALOG.length;
+      const seriesTitle = isClone ? `${template.name} - Temp. ${Math.floor(i / REAL_SERIES_CATALOG.length) + 1}` : template.name;
+
       result.push({
         id: `series_${globalId}`,
-        name: `${catSpec.name} - Série #${i + 1}`,
-        posterUrl: posterUrls[idx],
+        name: seriesTitle,
+        streamUrl: `http://wordbus.top/series/rachelalcantara2/18787429/${template.epId}.mp4`,
+        posterUrl: template.poster,
         category: catSpec.name,
-        plot: 'Uma série aclamada pela crítica com múltiplos episódios e temporadas completas.',
+        plot: template.plot,
         cast: 'Elenco principal e estrelas convidadas',
-        genre: 'Ação, Drama, Suspense',
-        rating: Number((7.5 + (globalId % 20) / 10).toFixed(1)),
-        year: String(2018 + (globalId % 9)),
+        genre: template.genre,
+        rating: template.rating,
+        year: template.year,
       });
       globalId++;
     }

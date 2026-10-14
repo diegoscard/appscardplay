@@ -16,6 +16,7 @@ import {
   VolumeX,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from 'lucide-react';
 import { VodMovie } from '../types';
 import { getPlayableStreamUrl } from '../utils/m3uParser';
@@ -49,48 +50,50 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  // Reliable HLS fallback streams verified to return 200 OK with CORS
-  const reliablePreviewStreams = useMemo(() => [
-    'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-    'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-    'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
-    'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-    'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-    'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8',
-  ], []);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Filter 2026 releases for the 1-minute rotating preview
-  const releases2026 = useMemo(() => {
-    const list = movies.filter((m) => {
-      const cat = (m.category || '').toLowerCase();
-      const name = (m.name || '').toLowerCase();
-      const year = (m.year || '').toString();
-      return (
-        cat.includes('2026') ||
-        cat.includes('lançamento') ||
-        cat.includes('lançamentos') ||
-        year === '2026' ||
-        name.includes('2026')
-      );
+  // Filtered movies based on category and search query (100% faithful to displayed catalog)
+  const filteredMovies = useMemo(() => {
+    return movies.filter((m) => {
+      const matchCat =
+        selectedCategory === 'TODOS' || m.category === selectedCategory;
+      const matchSearch =
+        !searchQuery.trim() ||
+        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.plot && m.plot.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchCat && matchSearch;
     });
-    return list.length > 0 ? list : movies;
-  }, [movies]);
+  }, [movies, selectedCategory, searchQuery]);
 
-  // Current rotating hero movie from 2026 releases
+  // Active catalog for preview: 100% faithful to the displayed catalog
+  const displayCatalog = useMemo(() => {
+    return filteredMovies.length > 0 ? filteredMovies : movies;
+  }, [filteredMovies, movies]);
+
+  // Current rotating hero movie directly from the real catalog displayed
   const heroMovie = useMemo(() => {
-    if (releases2026.length === 0) return null;
-    return releases2026[heroIndex % releases2026.length];
-  }, [releases2026, heroIndex]);
+    if (displayCatalog.length === 0) return null;
+    return displayCatalog[heroIndex % displayCatalog.length];
+  }, [displayCatalog, heroIndex]);
 
-  // Handle 1-minute countdown timer to switch movies
+  // Reset heroIndex, timer, and displayLimit when category or search changes
   useEffect(() => {
-    if (releases2026.length <= 1) return;
+    setHeroIndex(0);
+    setTimeRemaining(60);
+    setDisplayLimit(60);
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [selectedCategory, searchQuery]);
+
+  // Handle 1-minute countdown timer to switch movies within the active catalog
+  useEffect(() => {
+    if (displayCatalog.length <= 1) return;
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          setHeroIndex((idx) => (idx + 1) % releases2026.length);
+          setHeroIndex((idx) => (idx + 1) % displayCatalog.length);
           return 60;
         }
         return prev - 1;
@@ -98,21 +101,21 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [releases2026.length]);
+  }, [displayCatalog.length]);
 
   const handleNextHero = () => {
-    if (releases2026.length <= 1) return;
-    setHeroIndex((prev) => (prev + 1) % releases2026.length);
+    if (displayCatalog.length <= 1) return;
+    setHeroIndex((prev) => (prev + 1) % displayCatalog.length);
     setTimeRemaining(60);
   };
 
   const handlePrevHero = () => {
-    if (releases2026.length <= 1) return;
-    setHeroIndex((prev) => (prev - 1 + releases2026.length) % releases2026.length);
+    if (displayCatalog.length <= 1) return;
+    setHeroIndex((prev) => (prev - 1 + displayCatalog.length) % displayCatalog.length);
     setTimeRemaining(60);
   };
 
-  // Initialize and play hero video smoothly when heroMovie changes
+  // Initialize and play real movie video preview directly (100% faithful to the selected catalog movie)
   useEffect(() => {
     setVideoLoaded(false);
     const video = videoRef.current;
@@ -121,26 +124,18 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     let hls: Hls | null = null;
     let isCancelled = false;
 
-    // Use guaranteed fallback if streamUrl is empty or points to dead hosts
-    const rawUrl = heroMovie.streamUrl || '';
-    const isKnownBroken =
-      !rawUrl ||
-      rawUrl.includes('bitdash') ||
-      rawUrl.includes('jwplayer') ||
-      rawUrl.includes('longtailvideo') ||
-      rawUrl.includes('samsung.wurl.tv') ||
-      rawUrl.includes('liveproduseast');
-
-    const effectiveRawUrl = isKnownBroken
-      ? reliablePreviewStreams[heroIndex % reliablePreviewStreams.length]
-      : rawUrl;
-
-    const playableUrl = getPlayableStreamUrl(effectiveRawUrl);
-
-    if (!playableUrl) {
+    // Direct authentic stream from the catalog movie
+    let rawUrl = heroMovie.streamUrl || '';
+    if (!rawUrl && heroMovie.id) {
+      const cleanId = heroMovie.id.replace('vod_', '');
+      rawUrl = `http://wordbus.top/movie/rachelalcantara2/18787429/${cleanId}.mp4`;
+    }
+    if (!rawUrl) {
       setVideoLoaded(false);
       return;
     }
+
+    const playableUrl = getPlayableStreamUrl(rawUrl);
 
     const playStream = (srcUrl: string) => {
       if (isCancelled || !video) return;
@@ -160,7 +155,15 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         // ignore reset errors
       }
 
-      const isHls = srcUrl.includes('.m3u8') || srcUrl.includes('m3u8');
+      // Normalize MKV or extension if needed for HTML5 browser compatibility
+      let targetStreamUrl = srcUrl;
+      if (targetStreamUrl.toLowerCase().endsWith('.mkv')) {
+        targetStreamUrl = targetStreamUrl.replace(/\.mkv$/i, '.mp4');
+      } else if (targetStreamUrl.includes('.mkv?')) {
+        targetStreamUrl = targetStreamUrl.replace(/\.mkv\?/i, '.mp4?');
+      }
+
+      const isHls = targetStreamUrl.includes('.m3u8') || targetStreamUrl.includes('m3u8');
 
       const attemptPlay = () => {
         if (isCancelled || !video) return;
@@ -191,11 +194,11 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       if (Hls.isSupported() && isHls) {
         hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: true,
+          lowLatencyMode: false,
           backBufferLength: 30,
         });
         hlsRef.current = hls;
-        hls.loadSource(srcUrl);
+        hls.loadSource(targetStreamUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -213,39 +216,31 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                 break;
               default:
                 hls?.destroy();
-                // Try fallback stream if current one failed
-                const fallbackUrl = reliablePreviewStreams[heroIndex % reliablePreviewStreams.length];
-                if (!isCancelled && srcUrl !== fallbackUrl && srcUrl !== getPlayableStreamUrl(fallbackUrl)) {
-                  playStream(getPlayableStreamUrl(fallbackUrl));
-                } else if (!isCancelled) {
-                  setVideoLoaded(false);
-                }
+                hlsRef.current = null;
+                // Never replace with generic videos! Maintain authentic catalog backdrop
+                if (!isCancelled) setVideoLoaded(false);
                 break;
             }
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHls) {
-        video.src = srcUrl;
+        video.src = targetStreamUrl;
         video.addEventListener('loadedmetadata', attemptPlay, { once: true });
         video.addEventListener('error', () => {
-          const fallbackUrl = reliablePreviewStreams[heroIndex % reliablePreviewStreams.length];
-          if (!isCancelled && srcUrl !== fallbackUrl) {
-            playStream(getPlayableStreamUrl(fallbackUrl));
-          }
+          if (!isCancelled) setVideoLoaded(false);
         }, { once: true });
       } else {
-        video.src = srcUrl;
+        // Direct video (MP4 / WebM / VOD file from IPTV server)
+        video.src = targetStreamUrl;
         video.load();
 
         video.addEventListener('loadeddata', attemptPlay, { once: true });
         video.addEventListener('canplay', attemptPlay, { once: true });
+        video.addEventListener('playing', () => {
+          if (!isCancelled) setVideoLoaded(true);
+        }, { once: true });
         video.addEventListener('error', () => {
-          const fallbackUrl = reliablePreviewStreams[heroIndex % reliablePreviewStreams.length];
-          if (!isCancelled && srcUrl !== fallbackUrl) {
-            playStream(getPlayableStreamUrl(fallbackUrl));
-          } else if (!isCancelled) {
-            setVideoLoaded(false);
-          }
+          if (!isCancelled) setVideoLoaded(false);
         }, { once: true });
       }
     };
@@ -259,7 +254,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         hlsRef.current = null;
       }
     };
-  }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex, reliablePreviewStreams]);
+  }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex]);
 
   // Sync mute state and auto-unmute on first user gesture if browser blocked it
   useEffect(() => {
@@ -284,28 +279,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
   // Compact View state: after 10 seconds of spotlight (60 - 10 = 50s remaining)
   const isCompactView = timeRemaining <= 50;
-
-  const filteredMovies = useMemo(() => {
-    return movies.filter((m) => {
-      const matchCat =
-        selectedCategory === 'TODOS' || m.category === selectedCategory;
-      const matchSearch =
-        !searchQuery.trim() ||
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.plot && m.plot.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchCat && matchSearch;
-    });
-  }, [movies, selectedCategory, searchQuery]);
-
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  // Reset display limit and scroll position to top when category or search changes
-  useEffect(() => {
-    setDisplayLimit(60);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, [selectedCategory, searchQuery]);
 
   const displayedMovies = useMemo(() => {
     return filteredMovies.slice(0, displayLimit);
@@ -571,7 +544,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-red-950/50">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    LANÇAMENTOS 2026 · PRÉVIA 1 MIN
+                    {selectedCategory === 'TODOS' ? 'PRÉVIA DO CATÁLOGO' : selectedCategory.toUpperCase()} · PRÉVIA 1 MIN
                   </span>
 
                   {heroMovie.category && (
@@ -684,7 +657,11 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                 {displayedMovies.map((movie, idx) => (
                   <div
                     key={`${movie.id}_${idx}`}
-                    onClick={() => setSelectedMovie(movie)}
+                    onClick={() => {
+                      setHeroIndex(idx);
+                      setTimeRemaining(60);
+                      setSelectedMovie(movie);
+                    }}
                     className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
                   >
                     {/* Poster Image */}
@@ -723,17 +700,33 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                         {movie.name}
                       </h3>
                       <div className="flex items-center justify-between text-[10px] text-neutral-400 font-medium">
-                        <span>{movie.year || movie.category}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPlayMovie(movie);
-                          }}
-                          className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
-                          title="Assistir"
-                        >
-                          <Play className="w-3 h-3 fill-white" />
-                        </button>
+                        <span className="truncate pr-1">{movie.year || movie.category}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHeroIndex(idx);
+                              setTimeRemaining(60);
+                              if (contentRef.current) {
+                                contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                              }
+                            }}
+                            className="p-1 rounded-full bg-black/70 hover:bg-neutral-800 text-neutral-300 hover:text-white transition border border-white/20"
+                            title="Ver Prévia de Fundo deste Filme"
+                          >
+                            <Eye className="w-3 h-3 text-red-400" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onPlayMovie(movie);
+                            }}
+                            className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
+                            title="Assistir Agora"
+                          >
+                            <Play className="w-3 h-3 fill-white" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

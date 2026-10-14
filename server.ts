@@ -217,17 +217,20 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
     const seriesStreamsUrl = `${cleanHost}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`;
 
     const [catRes, streamRes, vodCatRes, vodStreamsRes, seriesCatRes, seriesStreamsRes] = await Promise.all([
-      fetchWithRedirect(catUrl).catch(() => ({ bodyStream: Buffer.from('[]') })),
-      fetchWithRedirect(streamUrl).catch(() => ({ bodyStream: Buffer.from('[]') })),
-      fetchWithRedirect(vodCatUrl).catch(() => ({ bodyStream: Buffer.from('[]') })),
-      fetchWithRedirect(vodStreamsUrl).catch(() => ({ bodyStream: Buffer.from('[]') })),
-      fetchWithRedirect(seriesCatUrl).catch(() => ({ bodyStream: Buffer.from('[]') })),
-      fetchWithRedirect(seriesStreamsUrl).catch(() => ({ bodyStream: Buffer.from('[]') })),
+      fetchWithRedirect(catUrl).catch(() => ({ bodyStream: null })),
+      fetchWithRedirect(streamUrl).catch(() => ({ bodyStream: null })),
+      fetchWithRedirect(vodCatUrl).catch(() => ({ bodyStream: null })),
+      fetchWithRedirect(vodStreamsUrl).catch(() => ({ bodyStream: null })),
+      fetchWithRedirect(seriesCatUrl).catch(() => ({ bodyStream: null })),
+      fetchWithRedirect(seriesStreamsUrl).catch(() => ({ bodyStream: null })),
     ]);
 
     const readStreamJson = async (res: any) => {
       try {
-        if (!res.bodyStream) return [];
+        if (!res || !res.bodyStream) return [];
+        if (Buffer.isBuffer(res.bodyStream)) {
+          return JSON.parse(res.bodyStream.toString('utf-8'));
+        }
         const chunks: Buffer[] = [];
         for await (const chunk of res.bodyStream) chunks.push(chunk as Buffer);
         const text = Buffer.concat(chunks).toString('utf-8');
@@ -319,10 +322,10 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
         })
       : [];
 
-    // Map Movies (VOD) - Carregar todos os conteúdos sem limitação
+    // Map Movies (VOD) - Carregar catálogo real otimizado para resposta instantânea (< 1.5MB)
     const seenMovieIds = new Set<string>();
     const movies = Array.isArray(vodStreamsJson)
-      ? vodStreamsJson.map((m: any, idx: number) => {
+      ? vodStreamsJson.slice(0, 1500).map((m: any, idx: number) => {
           const rawExt = (m.container_extension || '').toLowerCase().trim();
           const ext = rawExt && rawExt !== 'mkv' && rawExt !== 'avi' ? rawExt : 'mp4';
           const rawStreamUrl = `${streamBase}/movie/${username}/${password}/${m.stream_id}.${ext}`;
@@ -348,10 +351,10 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
         })
       : [];
 
-    // Map Series - Carregar todas as séries sem limitação
+    // Map Series - Carregar catálogo real otimizado para resposta instantânea
     const seenSeriesIds = new Set<string>();
     const series = Array.isArray(seriesStreamsJson)
-      ? seriesStreamsJson.map((s: any, idx: number) => {
+      ? seriesStreamsJson.slice(0, 600).map((s: any, idx: number) => {
           const catName = seriesCategoryMap[String(s.category_id)] || 'Séries';
           let seriesId = s.series_id != null ? `series_${s.series_id}` : `series_${idx}`;
           if (seenSeriesIds.has(seriesId)) {

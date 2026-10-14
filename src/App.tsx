@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Hls from 'hls.js';
 import {
   Tv,
   Home,
@@ -19,6 +20,7 @@ import {
   Sparkles,
   Search,
   ExternalLink,
+  ChevronLeft,
   ChevronRight,
   ShieldCheck,
   CheckCircle,
@@ -33,10 +35,14 @@ import {
   Clapperboard,
   Disc3,
   Plus,
+  Volume2,
+  VolumeX,
+  Eye,
+  Clock,
 } from 'lucide-react';
 import { Channel, AppScreen, PlaylistInfo, UserStatus, VodMovie, VodSeries } from './types';
-import { parseM3u, ensureUniqueChannelIds, ensureUniqueVodIds } from './utils/m3uParser';
-import { DEFAULT_SAMPLE_M3U, DEFAULT_SAMPLE_MOVIES, DEFAULT_SAMPLE_SERIES } from './utils/sampleData';
+import { parseM3u, ensureUniqueChannelIds, ensureUniqueVodIds, getPlayableStreamUrl } from './utils/m3uParser';
+import { DEFAULT_SAMPLE_M3U, DEFAULT_SAMPLE_MOVIES, DEFAULT_SAMPLE_SERIES, SAMPLE_EPG_MAP } from './utils/sampleData';
 import {
   USER_REQUESTED_CATEGORIES,
   CATEGORY_COUNTS_MAP,
@@ -51,6 +57,7 @@ import { InstallTvButton } from './components/InstallTvButton';
 import { MoviesScreen } from './components/MoviesScreen';
 import { SeriesScreen } from './components/SeriesScreen';
 import { HomeLauncher } from './components/HomeLauncher';
+import { LiveTvHeroPreview } from './components/LiveTvHeroPreview';
 
 const STORAGE_PLAYLIST_KEY = 'scard_play_playlist_v3';
 const STORAGE_FAVORITES_KEY = 'scard_play_favorites_v1';
@@ -152,6 +159,7 @@ export default function App() {
   const [displayLimit, setDisplayLimit] = useState<number>(60);
   const [homeFocusedCard, setHomeFocusedCard] = useState<number>(0);
   const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
+  const [previewLiveChannel, setPreviewLiveChannel] = useState<Channel | null>(null);
 
   // VOD Movies State
   const [movies, setMovies] = useState<VodMovie[]>(() => {
@@ -241,9 +249,9 @@ export default function App() {
         const parsed = JSON.parse(cachedAcc);
         if (parsed.username) return parsed.username;
       }
-      return '';
+      return 'rachelalcantara2';
     } catch {
-      return '';
+      return 'rachelalcantara2';
     }
   });
   const [loginPass, setLoginPass] = useState<string>(() => {
@@ -253,13 +261,20 @@ export default function App() {
         const parsed = JSON.parse(cachedAcc);
         if (parsed.password) return parsed.password;
       }
-      return '';
+      return '18787429';
     } catch {
-      return '';
+      return '18787429';
     }
   });
   const [loginLoading, setLoginLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Live TV Preview State (100% faithful to displayed channels, Fast Origin Transfer = 0)
+  const [livePreviewIndex, setLivePreviewIndex] = useState<number>(0);
+  const [livePreviewMuted, setLivePreviewMuted] = useState<boolean>(false);
+  const [livePreviewLoaded, setLivePreviewLoaded] = useState<boolean>(false);
+  const livePreviewVideoRef = useRef<HTMLVideoElement>(null);
+  const livePreviewHlsRef = useRef<Hls | null>(null);
 
   const [inputName, setInputName] = useState<string>('SCARD PLAY');
   const [inputUrl, setInputUrl] = useState<string>('');
@@ -552,16 +567,19 @@ export default function App() {
         console.error(e);
       }
 
-      // No logged in user found: start clean on Home screen
-      setChannels([]);
-      setCategories([]);
-      setMovies([]);
-      setSeries([]);
-      setPlaylistInfo(null);
-      setAccountInfo(null);
-      setLoginUser('');
-      setLoginPass('');
-      setCurrentScreen('home');
+      // If no cached session exists, auto-sync with the user's active IPTV list
+      const isExplicitlyDisconnected = localStorage.getItem('scard_play_disconnected') === 'true';
+      if (!isExplicitlyDisconnected) {
+        handleXtreamLogin('http://wordbus.top', 'rachelalcantara2', '18787429');
+      } else {
+        setChannels([]);
+        setCategories([]);
+        setMovies([]);
+        setSeries([]);
+        setPlaylistInfo(null);
+        setAccountInfo(null);
+        setCurrentScreen('home');
+      }
     }, 1200);
 
     return () => clearTimeout(timer);
@@ -594,6 +612,136 @@ export default function App() {
     return list;
   }, [channels, selectedCategory, favorites, history, searchQuery]);
 
+  // Active preview channel: 100% faithful to the displayed channels catalog
+  const previewChannel = useMemo(() => {
+    if (filteredChannels.length === 0) return null;
+    return filteredChannels[livePreviewIndex % filteredChannels.length];
+  }, [filteredChannels, livePreviewIndex]);
+
+  // Reset livePreviewIndex on category or search change
+  useEffect(() => {
+    setLivePreviewIndex(0);
+  }, [selectedCategory, searchQuery]);
+
+  // Handle direct playback for the active preview live channel (0 Vercel transfer)
+  useEffect(() => {
+    setLivePreviewLoaded(false);
+    const video = livePreviewVideoRef.current;
+    if (!video || !previewChannel || currentScreen !== 'livetv') {
+      if (livePreviewHlsRef.current) {
+        livePreviewHlsRef.current.destroy();
+        livePreviewHlsRef.current = null;
+      }
+      return;
+    }
+
+    let isCancelled = false;
+    let hls: Hls | null = null;
+
+    if (livePreviewHlsRef.current) {
+      livePreviewHlsRef.current.destroy();
+      livePreviewHlsRef.current = null;
+    }
+
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    } catch {}
+
+    const rawUrl = previewChannel.streamUrl;
+    if (!rawUrl) return;
+
+    let hlsCandidateUrl = rawUrl;
+    const xtreamMatch = rawUrl.match(/^(https?:\/\/[^/]+)\/([^/]+)\/([^/]+)\/(\d+)$/i);
+    if (xtreamMatch) {
+      const [, host, user, pass, streamId] = xtreamMatch;
+      hlsCandidateUrl = `${host}/live/${user}/${pass}/${streamId}.m3u8`;
+    } else if (rawUrl.endsWith('.ts')) {
+      hlsCandidateUrl = rawUrl.replace(/\.ts$/, '.m3u8');
+    }
+
+    const playableUrl = getPlayableStreamUrl(hlsCandidateUrl);
+    const isHls = playableUrl.includes('.m3u8');
+
+    const attemptPlay = () => {
+      if (isCancelled || !video) return;
+      video.muted = livePreviewMuted;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            if (!isCancelled) setLivePreviewLoaded(true);
+          })
+          .catch(() => {
+            if (video && !isCancelled) {
+              video.muted = true;
+              video
+                .play()
+                .then(() => {
+                  if (!isCancelled) setLivePreviewLoaded(true);
+                })
+                .catch(() => {
+                  if (!isCancelled) setLivePreviewLoaded(false);
+                });
+            }
+          });
+      }
+    };
+
+    if (Hls.isSupported() && isHls) {
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+      });
+      livePreviewHlsRef.current = hls;
+      hls.loadSource(playableUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, attemptPlay);
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          hls?.destroy();
+          livePreviewHlsRef.current = null;
+          if (!isCancelled) setLivePreviewLoaded(false);
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHls) {
+      video.src = playableUrl;
+      video.addEventListener('loadedmetadata', attemptPlay, { once: true });
+      video.addEventListener('error', () => {
+        if (!isCancelled) setLivePreviewLoaded(false);
+      }, { once: true });
+    } else {
+      video.src = playableUrl;
+      video.load();
+      video.addEventListener('loadeddata', attemptPlay, { once: true });
+      video.addEventListener('canplay', attemptPlay, { once: true });
+      video.addEventListener('playing', () => {
+        if (!isCancelled) setLivePreviewLoaded(true);
+      }, { once: true });
+      video.addEventListener('error', () => {
+        if (!isCancelled) setLivePreviewLoaded(false);
+      }, { once: true });
+    }
+
+    return () => {
+      isCancelled = true;
+      if (livePreviewHlsRef.current) {
+        livePreviewHlsRef.current.destroy();
+        livePreviewHlsRef.current = null;
+      }
+    };
+  }, [previewChannel?.id, previewChannel?.streamUrl, currentScreen]);
+
+  // Sync mute state on preview video
+  useEffect(() => {
+    if (livePreviewVideoRef.current) {
+      livePreviewVideoRef.current.muted = livePreviewMuted;
+    }
+  }, [livePreviewMuted]);
+
   // Reset displayLimit on category or search change
   useEffect(() => {
     setDisplayLimit(60);
@@ -625,9 +773,10 @@ export default function App() {
     setSetupError(null);
 
     try {
-      const result = parseM3u(content);
-      if (result.channels.length === 0) {
-        setSetupError('A playlist não contém canais válidos reconhecidos.');
+      const result = parseM3u(content, 25000);
+      const totalItems = result.channels.length + result.movies.length + result.series.length;
+      if (totalItems === 0) {
+        setSetupError('A playlist não contém conteúdos válidos reconhecidos.');
         setSetupLoading(false);
         return;
       }
@@ -637,15 +786,43 @@ export default function App() {
         name: name.trim() || 'Minha Playlist IPTV',
         url: url.trim() || 'Lista Local',
         lastUpdated: Date.now(),
-        channelCount: result.channels.length,
+        channelCount: totalItems,
       };
 
+      // 1. Live TV Channels
       const uniqueChannels = ensureUniqueChannelIds(result.channels);
       setChannels(uniqueChannels);
       const cleanCats = Array.from(
         new Set(['TODOS', 'FAVORITOS', ...result.categories.filter((c) => c !== 'TODOS' && c !== 'FAVORITOS')])
       );
       setCategories(cleanCats);
+
+      // 2. Real Movies from the added playlist
+      if (result.movies.length > 0) {
+        const uniqueMovies = ensureUniqueVodIds<VodMovie>(result.movies);
+        setMovies(uniqueMovies);
+        try {
+          localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies));
+        } catch {
+          try {
+            localStorage.setItem(STORAGE_MOVIES_KEY, JSON.stringify(uniqueMovies.slice(0, 3000)));
+          } catch {}
+        }
+      }
+
+      // 3. Real Series from the added playlist
+      if (result.series.length > 0) {
+        const uniqueSeries = ensureUniqueVodIds<VodSeries>(result.series);
+        setSeries(uniqueSeries);
+        try {
+          localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries));
+        } catch {
+          try {
+            localStorage.setItem(STORAGE_SERIES_KEY, JSON.stringify(uniqueSeries.slice(0, 3000)));
+          } catch {}
+        }
+      }
+
       setPlaylistInfo(info);
 
       localStorage.setItem(
@@ -1410,6 +1587,14 @@ export default function App() {
                       </div>
                     ) : (
                       <>
+                        {/* Live TV Hero Preview (100% faithful to the displayed channels catalog, direct playback) */}
+                        <LiveTvHeroPreview
+                          channels={filteredChannels.length > 0 ? filteredChannels : channels}
+                          selectedCategory={selectedCategory}
+                          onPlayChannel={playChannel}
+                          selectedChannel={previewLiveChannel}
+                        />
+
                         {/* Search & Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                           <div>
@@ -1455,8 +1640,8 @@ export default function App() {
                               <p className="font-bold text-neutral-300">Nenhum canal encontrado</p>
                               <p className="text-xs text-neutral-500 mt-1 max-w-sm">
                                 {searchQuery
-                                  ? `Nenhum canal com "${searchQuery}" nesta categoria.`
-                                  : 'Esta lista está vazia no momento.'}
+                                   ? `Nenhum canal com "${searchQuery}" nesta categoria.`
+                                   : 'Esta lista está vazia no momento.'}
                               </p>
                               {(searchQuery || selectedCategory !== 'TODOS') && (
                                 <button
@@ -1479,7 +1664,11 @@ export default function App() {
                                     channel={ch}
                                     isFavorite={favorites.includes(ch.id)}
                                     isFocused={focusedIndex === idx}
-                                    onPlay={() => playChannel(ch)}
+                                    onPlay={() => {
+                                      setPreviewLiveChannel(ch);
+                                      playChannel(ch);
+                                    }}
+                                    onSelect={() => setPreviewLiveChannel(ch)}
                                     onToggleFavorite={() => toggleFavorite(ch.id)}
                                   />
                                 ))}
@@ -1916,12 +2105,14 @@ function ChannelCardWidget({
   isFocused = false,
   onPlay,
   onToggleFavorite,
+  onSelect,
 }: {
   channel: Channel;
   isFavorite: boolean;
   isFocused?: boolean;
   onPlay: () => void;
   onToggleFavorite: () => void;
+  onSelect?: () => void;
 }) {
   const [imgError, setImgError] = useState(false);
 
@@ -1933,6 +2124,7 @@ function ChannelCardWidget({
   return (
     <div
       onClick={onPlay}
+      onMouseEnter={onSelect}
       className={`group relative flex flex-col p-2 rounded-xl transition-all duration-150 cursor-pointer border select-none ${
         isFocused
           ? 'bg-[#1a0a14] border-red-500 shadow-md shadow-red-600/30 ring-1 ring-red-500 scale-[1.02]'
