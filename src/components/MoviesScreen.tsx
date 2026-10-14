@@ -43,7 +43,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   // 1-Minute Rotating Hero Spotlight for 2026 Releases
   const [heroIndex, setHeroIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(60);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -175,7 +175,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
             .catch(() => {
               if (video && !isCancelled) {
                 video.muted = true;
-                setIsMuted(true);
                 video
                   .play()
                   .then(() => {
@@ -262,10 +261,24 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     };
   }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex, reliablePreviewStreams]);
 
-  // Sync mute state
+  // Sync mute state and auto-unmute on first user gesture if browser blocked it
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.muted = isMuted;
+    }
+
+    if (!isMuted) {
+      const handleGesture = () => {
+        if (videoRef.current) {
+          videoRef.current.muted = false;
+        }
+      };
+      window.addEventListener('click', handleGesture, { once: true });
+      window.addEventListener('keydown', handleGesture, { once: true });
+      return () => {
+        window.removeEventListener('click', handleGesture);
+        window.removeEventListener('keydown', handleGesture);
+      };
     }
   }, [isMuted]);
 
@@ -457,9 +470,6 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
                 <Clock className="w-3.5 h-3.5 text-red-500 animate-pulse" />
                 <span className="text-white font-mono tracking-wider font-extrabold">
                   {timeRemaining}s
-                </span>
-                <span className="text-[10px] text-neutral-400 font-sans font-medium hidden sm:inline">
-                  / 60s
                 </span>
               </div>
 

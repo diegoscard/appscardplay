@@ -137,14 +137,13 @@ app.get('/api/proxy/playlist', async (req: Request, res: Response) => {
   }
 });
 
-// 2. PROXY STREAM ENDPOINT - REGRA: ZERO CONSUMO VERCEL
-// NUNCA transmite nem faz proxy de bytes binários de vídeo através da infraestrutura da Vercel.
-// Redireciona o player imediatamente (HTTP 307) para o servidor de mídia externo ou CDN.
+// 2. PROXY STREAM ENDPOINT (Zero Vercel Transfer / Fast Origin Transfer = 0)
+// Does NOT stream or proxy video chunks through the server/Vercel functions.
+// Sends an immediate 302 redirect so the client streams directly from the origin CDN/IPTV server.
 app.options('/api/proxy/stream', (_req: Request, res: Response) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Expose-Headers', 'Location, Content-Range, Content-Length, Accept-Ranges');
   res.sendStatus(204);
 });
 
@@ -152,7 +151,6 @@ app.all('/api/proxy/stream', (req: Request, res: Response) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Expose-Headers', 'Location, Content-Range, Content-Length, Accept-Ranges');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -163,11 +161,8 @@ app.all('/api/proxy/stream', (req: Request, res: Response) => {
     return res.status(400).send('Missing url parameter');
   }
 
-  // ZERO CONSUMO VERCEL:
-  // Redireciona (HTTP 307) o player diretamente para o servidor externo/CDN.
-  // 0 bytes de vídeo trafegam pela Vercel, eliminando 100% do Fast Origin Transfer!
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  return res.redirect(307, targetUrl);
+  // Zero Vercel Transfer: Redirect client directly to the media source
+  return res.redirect(302, targetUrl);
 });
 
 // 3. XTREAM CODES DIRECT FAST API (Bypasses downloading 200,000 channels all at once)

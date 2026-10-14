@@ -14,23 +14,29 @@ export function generateInitials(name: string): string {
 }
 
 /**
- * Returns a playable URL: if the stream is HTTP or needs proxying to bypass CORS/mixed-content,
- * routes through /api/proxy/stream.
+ * Zero-Vercel Direct Playback (Fast Origin Transfer = 0):
+ * Returns direct media stream URLs so video playback (previews, movies, series, live channels)
+ * streams directly from the origin CDN / IPTV server to the client player,
+ * completely bypassing Vercel and eliminating all Fast Origin Transfer consumption.
  */
 export function getPlayableStreamUrl(originalUrl: string): string {
   if (!originalUrl) return '';
 
-  // If already relative proxy or local blob
-  if (originalUrl.startsWith('/api/') || originalUrl.startsWith('blob:')) {
+  // Local blobs or base64 data
+  if (originalUrl.startsWith('blob:') || originalUrl.startsWith('data:')) {
     return originalUrl;
   }
 
-  // If page is HTTPS and stream is HTTP, or external IPTV server without CORS
-  const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
-  const isHttpStream = originalUrl.startsWith('http://');
-
-  if (isHttpStream || isHttpsPage || originalUrl.includes('lazercp.sbs') || originalUrl.includes('wordbus.top')) {
-    return `/api/proxy/stream?url=${encodeURIComponent(originalUrl)}`;
+  // Strip any legacy /api/proxy/stream?url= wrappers from cached data
+  if (originalUrl.includes('/api/proxy/stream?url=')) {
+    try {
+      const match = originalUrl.match(/url=([^&]+)/);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+    } catch {
+      // ignore decode error
+    }
   }
 
   return originalUrl;
@@ -47,7 +53,17 @@ export function ensureUniqueChannelIds(channels: Channel[]): Channel[] {
       id = `${id}_${Math.random().toString(36).substring(2, 6)}`;
     }
     seen.add(id);
-    return id === ch.id ? ch : { ...ch, id };
+
+    // Clean legacy proxy URLs from cached channels
+    let streamUrl = ch.streamUrl;
+    if (streamUrl && streamUrl.includes('/api/proxy/stream?url=')) {
+      try {
+        const match = streamUrl.match(/url=([^&]+)/);
+        if (match && match[1]) streamUrl = decodeURIComponent(match[1]);
+      } catch {}
+    }
+
+    return { ...ch, id, streamUrl };
   });
 }
 
@@ -74,6 +90,14 @@ export function ensureUniqueVodIds<T extends { id: string; streamUrl?: string }>
     seen.add(id);
 
     let streamUrl = item.streamUrl;
+    // Clean legacy proxy URLs from cached items
+    if (streamUrl && streamUrl.includes('/api/proxy/stream?url=')) {
+      try {
+        const match = streamUrl.match(/url=([^&]+)/);
+        if (match && match[1]) streamUrl = decodeURIComponent(match[1]);
+      } catch {}
+    }
+
     if (
       !streamUrl ||
       streamUrl.includes('bitdash') ||
