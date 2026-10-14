@@ -70,16 +70,16 @@ export const TOTAL_REQUESTED_CHANNELS = USER_REQUESTED_CATEGORIES.reduce(
 
 // High-reliability live HLS video streams with direct CDN playback (Fast Origin Transfer = 0)
 const STREAM_POOL = [
-  'http://wordbus.top/live/rachelalcantara2/18787429/204741.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/143926.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/169152.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/143927.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/169153.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/143928.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/169154.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/143929.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/169155.m3u8',
-  'http://wordbus.top/live/rachelalcantara2/18787429/143930.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/204741.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/143926.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/169152.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/143927.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/169153.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/143928.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/169154.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/143929.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/169155.m3u8',
+  'http://wordbus.top/live/demo_user/demo_password/143930.m3u8',
 ];
 
 // Specific realistic channel names per category
@@ -707,7 +707,7 @@ export function generateUserRequestedMovies(): VodMovie[] {
       result.push({
         id: `vod_m_${globalId}`,
         name: movieName,
-        streamUrl: `http://wordbus.top/movie/rachelalcantara2/18787429/${movieTemplate.streamId}.mp4`,
+        streamUrl: `http://wordbus.top/movie/demo_user/demo_password/${movieTemplate.streamId}.mp4`,
         posterUrl: movieTemplate.poster,
         category: catSpec.name,
         year: movieTemplate.year,
@@ -817,7 +817,7 @@ export function generateUserRequestedSeries(): VodSeries[] {
       result.push({
         id: `series_${globalId}`,
         name: seriesTitle,
-        streamUrl: `http://wordbus.top/series/rachelalcantara2/18787429/${template.epId}.mp4`,
+        streamUrl: `http://wordbus.top/series/demo_user/demo_password/${template.epId}.mp4`,
         posterUrl: template.poster,
         category: catSpec.name,
         plot: template.plot,

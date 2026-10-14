@@ -322,10 +322,10 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
         })
       : [];
 
-    // Map Movies (VOD) - Carregar catálogo real otimizado para resposta instantânea (< 1.5MB)
+    // Map Movies (VOD) - Carregar 100% dos filmes do catálogo
     const seenMovieIds = new Set<string>();
     const movies = Array.isArray(vodStreamsJson)
-      ? vodStreamsJson.slice(0, 1500).map((m: any, idx: number) => {
+      ? vodStreamsJson.map((m: any, idx: number) => {
           const rawExt = (m.container_extension || '').toLowerCase().trim();
           const ext = rawExt && rawExt !== 'mkv' && rawExt !== 'avi' ? rawExt : 'mp4';
           const rawStreamUrl = `${streamBase}/movie/${username}/${password}/${m.stream_id}.${ext}`;
@@ -351,10 +351,10 @@ app.post('/api/xtream/login-and-sync', async (req: Request, res: Response) => {
         })
       : [];
 
-    // Map Series - Carregar catálogo real otimizado para resposta instantânea
+    // Map Series - Carregar 100% das séries do catálogo
     const seenSeriesIds = new Set<string>();
     const series = Array.isArray(seriesStreamsJson)
-      ? seriesStreamsJson.slice(0, 600).map((s: any, idx: number) => {
+      ? seriesStreamsJson.map((s: any, idx: number) => {
           const catName = seriesCategoryMap[String(s.category_id)] || 'Séries';
           let seriesId = s.series_id != null ? `series_${s.series_id}` : `series_${idx}`;
           if (seenSeriesIds.has(seriesId)) {

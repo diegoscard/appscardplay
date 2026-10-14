@@ -57,7 +57,6 @@ import { InstallTvButton } from './components/InstallTvButton';
 import { MoviesScreen } from './components/MoviesScreen';
 import { SeriesScreen } from './components/SeriesScreen';
 import { HomeLauncher } from './components/HomeLauncher';
-import { LiveTvHeroPreview } from './components/LiveTvHeroPreview';
 
 const STORAGE_PLAYLIST_KEY = 'scard_play_playlist_v3';
 const STORAGE_FAVORITES_KEY = 'scard_play_favorites_v1';
@@ -140,8 +139,9 @@ export default function App() {
   const [previousScreen, setPreviousScreen] = useState<AppScreen>('livetv');
   const [channels, setChannels] = useState<Channel[]>(() => {
     try {
+      const cachedAcc = localStorage.getItem('scard_play_account_v1');
       const cached = localStorage.getItem(STORAGE_PLAYLIST_KEY);
-      if (cached) {
+      if (cachedAcc && cached) {
         const parsed = JSON.parse(cached);
         if (parsed.channels && parsed.channels.length > 0) {
           return ensureUniqueChannelIds(parsed.channels);
@@ -159,13 +159,13 @@ export default function App() {
   const [displayLimit, setDisplayLimit] = useState<number>(60);
   const [homeFocusedCard, setHomeFocusedCard] = useState<number>(0);
   const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
-  const [previewLiveChannel, setPreviewLiveChannel] = useState<Channel | null>(null);
 
   // VOD Movies State
   const [movies, setMovies] = useState<VodMovie[]>(() => {
     try {
+      const cachedAcc = localStorage.getItem('scard_play_account_v1');
       const saved = localStorage.getItem('scard_play_movies_v1');
-      if (saved) {
+      if (cachedAcc && saved) {
         const parsed = JSON.parse(saved);
         if (parsed.length > 0) return ensureUniqueVodIds(parsed);
       }
@@ -190,8 +190,9 @@ export default function App() {
   // Series State
   const [series, setSeries] = useState<VodSeries[]>(() => {
     try {
+      const cachedAcc = localStorage.getItem('scard_play_account_v1');
       const saved = localStorage.getItem('scard_play_series_v1');
-      if (saved) {
+      if (cachedAcc && saved) {
         const parsed = JSON.parse(saved);
         if (parsed.length > 0) return ensureUniqueVodIds(parsed);
       }
@@ -249,9 +250,9 @@ export default function App() {
         const parsed = JSON.parse(cachedAcc);
         if (parsed.username) return parsed.username;
       }
-      return 'rachelalcantara2';
+      return '';
     } catch {
-      return 'rachelalcantara2';
+      return '';
     }
   });
   const [loginPass, setLoginPass] = useState<string>(() => {
@@ -261,20 +262,13 @@ export default function App() {
         const parsed = JSON.parse(cachedAcc);
         if (parsed.password) return parsed.password;
       }
-      return '18787429';
+      return '';
     } catch {
-      return '18787429';
+      return '';
     }
   });
   const [loginLoading, setLoginLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-
-  // Live TV Preview State (100% faithful to displayed channels, Fast Origin Transfer = 0)
-  const [livePreviewIndex, setLivePreviewIndex] = useState<number>(0);
-  const [livePreviewMuted, setLivePreviewMuted] = useState<boolean>(false);
-  const [livePreviewLoaded, setLivePreviewLoaded] = useState<boolean>(false);
-  const livePreviewVideoRef = useRef<HTMLVideoElement>(null);
-  const livePreviewHlsRef = useRef<Hls | null>(null);
 
   const [inputName, setInputName] = useState<string>('SCARD PLAY');
   const [inputUrl, setInputUrl] = useState<string>('');
@@ -299,7 +293,6 @@ export default function App() {
   });
 
   const isUserConnected = Boolean(
-    (loginUser && loginUser.trim().length > 0) ||
     accountInfo?.username ||
     (playlistInfo && channels.length > 0)
   );
@@ -567,19 +560,14 @@ export default function App() {
         console.error(e);
       }
 
-      // If no cached session exists, auto-sync with the user's active IPTV list
-      const isExplicitlyDisconnected = localStorage.getItem('scard_play_disconnected') === 'true';
-      if (!isExplicitlyDisconnected) {
-        handleXtreamLogin('http://wordbus.top', 'rachelalcantara2', '18787429');
-      } else {
-        setChannels([]);
-        setCategories([]);
-        setMovies([]);
-        setSeries([]);
-        setPlaylistInfo(null);
-        setAccountInfo(null);
-        setCurrentScreen('home');
-      }
+      // Default when opening app: NO user connected by default
+      setChannels([]);
+      setCategories([]);
+      setMovies([]);
+      setSeries([]);
+      setPlaylistInfo(null);
+      setAccountInfo(null);
+      setCurrentScreen('home');
     }, 1200);
 
     return () => clearTimeout(timer);
@@ -612,135 +600,7 @@ export default function App() {
     return list;
   }, [channels, selectedCategory, favorites, history, searchQuery]);
 
-  // Active preview channel: 100% faithful to the displayed channels catalog
-  const previewChannel = useMemo(() => {
-    if (filteredChannels.length === 0) return null;
-    return filteredChannels[livePreviewIndex % filteredChannels.length];
-  }, [filteredChannels, livePreviewIndex]);
 
-  // Reset livePreviewIndex on category or search change
-  useEffect(() => {
-    setLivePreviewIndex(0);
-  }, [selectedCategory, searchQuery]);
-
-  // Handle direct playback for the active preview live channel (0 Vercel transfer)
-  useEffect(() => {
-    setLivePreviewLoaded(false);
-    const video = livePreviewVideoRef.current;
-    if (!video || !previewChannel || currentScreen !== 'livetv') {
-      if (livePreviewHlsRef.current) {
-        livePreviewHlsRef.current.destroy();
-        livePreviewHlsRef.current = null;
-      }
-      return;
-    }
-
-    let isCancelled = false;
-    let hls: Hls | null = null;
-
-    if (livePreviewHlsRef.current) {
-      livePreviewHlsRef.current.destroy();
-      livePreviewHlsRef.current = null;
-    }
-
-    try {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-    } catch {}
-
-    const rawUrl = previewChannel.streamUrl;
-    if (!rawUrl) return;
-
-    let hlsCandidateUrl = rawUrl;
-    const xtreamMatch = rawUrl.match(/^(https?:\/\/[^/]+)\/([^/]+)\/([^/]+)\/(\d+)$/i);
-    if (xtreamMatch) {
-      const [, host, user, pass, streamId] = xtreamMatch;
-      hlsCandidateUrl = `${host}/live/${user}/${pass}/${streamId}.m3u8`;
-    } else if (rawUrl.endsWith('.ts')) {
-      hlsCandidateUrl = rawUrl.replace(/\.ts$/, '.m3u8');
-    }
-
-    const playableUrl = getPlayableStreamUrl(hlsCandidateUrl);
-    const isHls = playableUrl.includes('.m3u8');
-
-    const attemptPlay = () => {
-      if (isCancelled || !video) return;
-      video.muted = livePreviewMuted;
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            if (!isCancelled) setLivePreviewLoaded(true);
-          })
-          .catch(() => {
-            if (video && !isCancelled) {
-              video.muted = true;
-              video
-                .play()
-                .then(() => {
-                  if (!isCancelled) setLivePreviewLoaded(true);
-                })
-                .catch(() => {
-                  if (!isCancelled) setLivePreviewLoaded(false);
-                });
-            }
-          });
-      }
-    };
-
-    if (Hls.isSupported() && isHls) {
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 30,
-        maxBufferLength: 30,
-      });
-      livePreviewHlsRef.current = hls;
-      hls.loadSource(playableUrl);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, attemptPlay);
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          hls?.destroy();
-          livePreviewHlsRef.current = null;
-          if (!isCancelled) setLivePreviewLoaded(false);
-        }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHls) {
-      video.src = playableUrl;
-      video.addEventListener('loadedmetadata', attemptPlay, { once: true });
-      video.addEventListener('error', () => {
-        if (!isCancelled) setLivePreviewLoaded(false);
-      }, { once: true });
-    } else {
-      video.src = playableUrl;
-      video.load();
-      video.addEventListener('loadeddata', attemptPlay, { once: true });
-      video.addEventListener('canplay', attemptPlay, { once: true });
-      video.addEventListener('playing', () => {
-        if (!isCancelled) setLivePreviewLoaded(true);
-      }, { once: true });
-      video.addEventListener('error', () => {
-        if (!isCancelled) setLivePreviewLoaded(false);
-      }, { once: true });
-    }
-
-    return () => {
-      isCancelled = true;
-      if (livePreviewHlsRef.current) {
-        livePreviewHlsRef.current.destroy();
-        livePreviewHlsRef.current = null;
-      }
-    };
-  }, [previewChannel?.id, previewChannel?.streamUrl, currentScreen]);
-
-  // Sync mute state on preview video
-  useEffect(() => {
-    if (livePreviewVideoRef.current) {
-      livePreviewVideoRef.current.muted = livePreviewMuted;
-    }
-  }, [livePreviewMuted]);
 
   // Reset displayLimit on category or search change
   useEffect(() => {
@@ -1587,14 +1447,6 @@ export default function App() {
                       </div>
                     ) : (
                       <>
-                        {/* Live TV Hero Preview (100% faithful to the displayed channels catalog, direct playback) */}
-                        <LiveTvHeroPreview
-                          channels={filteredChannels.length > 0 ? filteredChannels : channels}
-                          selectedCategory={selectedCategory}
-                          onPlayChannel={playChannel}
-                          selectedChannel={previewLiveChannel}
-                        />
-
                         {/* Search & Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                           <div>
@@ -1664,11 +1516,7 @@ export default function App() {
                                     channel={ch}
                                     isFavorite={favorites.includes(ch.id)}
                                     isFocused={focusedIndex === idx}
-                                    onPlay={() => {
-                                      setPreviewLiveChannel(ch);
-                                      playChannel(ch);
-                                    }}
-                                    onSelect={() => setPreviewLiveChannel(ch)}
+                                    onPlay={() => playChannel(ch)}
                                     onToggleFavorite={() => toggleFavorite(ch.id)}
                                   />
                                 ))}

@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Plus,
 } from 'lucide-react';
 import { VodMovie } from '../types';
 import { getPlayableStreamUrl } from '../utils/m3uParser';
@@ -27,6 +28,10 @@ interface MoviesScreenProps {
   selectedCategory: string;
   onSelectCategory: (cat: string) => void;
   onPlayMovie: (movie: VodMovie) => void;
+  serverHost?: string;
+  loginUser?: string;
+  loginPass?: string;
+  onConnectUser?: () => void;
 }
 
 export const MoviesScreen: React.FC<MoviesScreenProps> = ({
@@ -35,6 +40,10 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   selectedCategory,
   onSelectCategory,
   onPlayMovie,
+  serverHost,
+  loginUser,
+  loginPass,
+  onConnectUser,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
@@ -126,9 +135,11 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     // Direct authentic stream from the catalog movie
     let rawUrl = heroMovie.streamUrl || '';
-    if (!rawUrl && heroMovie.id) {
+    if (!rawUrl && heroMovie.id && loginUser && loginPass) {
       const cleanId = heroMovie.id.replace('vod_', '');
-      rawUrl = `http://wordbus.top/movie/rachelalcantara2/18787429/${cleanId}.mp4`;
+      const cleanHost = (serverHost || 'http://wordbus.top').trim();
+      const baseHost = cleanHost.startsWith('http') ? cleanHost : `http://${cleanHost}`;
+      rawUrl = `${baseHost}/movie/${encodeURIComponent(loginUser)}/${encodeURIComponent(loginPass)}/${cleanId}.mp4`;
     }
     if (!rawUrl) {
       setVideoLoaded(false);
@@ -374,7 +385,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
       <div ref={contentRef} className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
         
         {/* Hero Featured Movie Banner with 1-Min Video Preview (Sticky Top, Catalog Scrolls Behind) */}
-        {heroMovie && (
+        {movies.length > 0 && heroMovie && (
           <div className="sticky top-0 z-30 w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.95)] border-b border-neutral-800/80">
             {/* Background Video Player - 100% visibility after 10s */}
             <video
@@ -643,7 +654,24 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
           </div>
 
           {/* Movies Grid */}
-          {filteredMovies.length === 0 ? (
+          {movies.length === 0 ? (
+            <div className="p-16 text-center rounded-3xl bg-[#140c11] border border-neutral-800 space-y-4 max-w-md mx-auto my-12">
+              <Film className="w-14 h-14 text-red-500 mx-auto" />
+              <h3 className="text-xl font-black text-white">Nenhum Usuário Conectado</h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Conecte um usuário válido para carregar 100% dos filmes disponíveis.
+              </p>
+              {onConnectUser && (
+                <button
+                  onClick={onConnectUser}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-red-600/30 flex items-center gap-2 mx-auto cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Conectar Usuário</span>
+                </button>
+              )}
+            </div>
+          ) : filteredMovies.length === 0 ? (
             <div className="p-16 text-center rounded-3xl bg-[#140c11] border border-neutral-800 space-y-3">
               <Film className="w-12 h-12 text-neutral-600 mx-auto" />
               <p className="text-base font-bold text-neutral-300">Nenhum filme encontrado</p>

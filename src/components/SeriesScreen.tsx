@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import Hls from 'hls.js';
 import {
   Tv,
   Play,
@@ -9,16 +8,10 @@ import {
   X,
   Flame,
   Layers,
-  ChevronLeft,
-  ChevronRight,
   RotateCw,
-  Clock,
-  Volume2,
-  VolumeX,
-  Eye,
+  Plus,
 } from 'lucide-react';
 import { VodSeries, SeriesEpisode } from '../types';
-import { getPlayableStreamUrl } from '../utils/m3uParser';
 
 interface SeriesScreenProps {
   series: VodSeries[];
@@ -29,6 +22,7 @@ interface SeriesScreenProps {
   serverHost: string;
   loginUser: string;
   loginPass: string;
+  onConnectUser?: () => void;
 }
 
 export const SeriesScreen: React.FC<SeriesScreenProps> = ({
@@ -40,6 +34,7 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
   serverHost,
   loginUser,
   loginPass,
+  onConnectUser,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
@@ -49,18 +44,9 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
   const [selectedSeason, setSelectedSeason] = useState<string>('1');
   const [displayLimit, setDisplayLimit] = useState(60);
 
-  // 1-Minute Rotating Hero Spotlight for Series
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(60);
-  const [isMuted, setIsMuted] = useState(false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const seriesEp1Cache = useRef<Record<string, string>>({});
 
-  // Filtered series based on category and search query (100% faithful to displayed catalog)
+  // Filtered series based on category and search query
   const filteredSeries = useMemo(() => {
     return series.filter((s) => {
       const matchCat =
@@ -73,212 +59,13 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
     });
   }, [series, selectedCategory, searchQuery]);
 
-  // Active catalog for preview: 100% faithful to the displayed catalog
-  const displayCatalog = useMemo(() => {
-    return filteredSeries.length > 0 ? filteredSeries : series;
-  }, [filteredSeries, series]);
-
-  // Current rotating hero series directly from the real catalog displayed
-  const heroSeries = useMemo(() => {
-    if (displayCatalog.length === 0) return null;
-    return displayCatalog[heroIndex % displayCatalog.length];
-  }, [displayCatalog, heroIndex]);
-
   // Reset display limit and scroll position to top when category or search changes
   useEffect(() => {
-    setHeroIndex(0);
-    setTimeRemaining(60);
     setDisplayLimit(60);
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
   }, [selectedCategory, searchQuery]);
-
-  // Handle 1-minute countdown timer to switch series within the active catalog
-  useEffect(() => {
-    if (displayCatalog.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          setHeroIndex((idx) => (idx + 1) % displayCatalog.length);
-          return 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [displayCatalog.length]);
-
-  const handleNextHero = () => {
-    if (displayCatalog.length <= 1) return;
-    setHeroIndex((prev) => (prev + 1) % displayCatalog.length);
-    setTimeRemaining(60);
-  };
-
-  const handlePrevHero = () => {
-    if (displayCatalog.length <= 1) return;
-    setHeroIndex((prev) => (prev - 1 + displayCatalog.length) % displayCatalog.length);
-    setTimeRemaining(60);
-  };
-
-  // Initialize and play real series video preview directly (100% faithful to displayed series)
-  useEffect(() => {
-    setVideoLoaded(false);
-    const video = videoRef.current;
-    if (!video || !heroSeries) return;
-
-    let hls: Hls | null = null;
-    let isCancelled = false;
-
-    // Direct authentic stream from the catalog series or constructed from Xtream series id
-    const cleanHost = (serverHost || 'http://wordbus.top').trim();
-    const baseHost = cleanHost.startsWith('http') ? cleanHost : `http://${cleanHost}`;
-    const cleanSeriesId = heroSeries.id.replace('series_', '');
-    const user = loginUser || 'rachelalcantara2';
-    const pass = loginPass || '18787429';
-
-    const playStream = (srcUrl: string) => {
-      if (isCancelled || !video || !srcUrl) return;
-
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-
-      try {
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-      } catch {}
-
-      let targetStreamUrl = srcUrl;
-      if (targetStreamUrl.toLowerCase().endsWith('.mkv')) {
-        targetStreamUrl = targetStreamUrl.replace(/\.mkv$/i, '.mp4');
-      }
-
-      const isHls = targetStreamUrl.includes('.m3u8');
-
-      const attemptPlay = () => {
-        if (isCancelled || !video) return;
-        video.muted = isMuted;
-
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              if (!isCancelled) setVideoLoaded(true);
-            })
-            .catch(() => {
-              if (video && !isCancelled) {
-                video.muted = true;
-                video
-                  .play()
-                  .then(() => {
-                    if (!isCancelled) setVideoLoaded(true);
-                  })
-                  .catch(() => {
-                    if (!isCancelled) setVideoLoaded(false);
-                  });
-              }
-            });
-        }
-      };
-
-      if (Hls.isSupported() && isHls) {
-        hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          backBufferLength: 30,
-        });
-        hlsRef.current = hls;
-        hls.loadSource(targetStreamUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, attemptPlay);
-        hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) {
-            hls?.destroy();
-            hlsRef.current = null;
-            if (!isCancelled) setVideoLoaded(false);
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHls) {
-        video.src = targetStreamUrl;
-        video.addEventListener('loadedmetadata', attemptPlay, { once: true });
-        video.addEventListener('error', () => {
-          if (!isCancelled) setVideoLoaded(false);
-        }, { once: true });
-      } else {
-        video.src = targetStreamUrl;
-        video.load();
-
-        video.addEventListener('loadeddata', attemptPlay, { once: true });
-        video.addEventListener('canplay', attemptPlay, { once: true });
-        video.addEventListener('playing', () => {
-          if (!isCancelled) setVideoLoaded(true);
-        }, { once: true });
-        video.addEventListener('error', () => {
-          if (!isCancelled) setVideoLoaded(false);
-        }, { once: true });
-      }
-    };
-
-    // Determine actual playable URL
-    if (heroSeries.streamUrl && !heroSeries.streamUrl.endsWith(`/${cleanSeriesId}.mp4`)) {
-      playStream(getPlayableStreamUrl(heroSeries.streamUrl));
-    } else if (seriesEp1Cache.current[cleanSeriesId]) {
-      playStream(getPlayableStreamUrl(seriesEp1Cache.current[cleanSeriesId]));
-    } else {
-      // Asynchronously fetch series info for real Episode 1
-      fetch(
-        `/api/xtream/series-info?host=${encodeURIComponent(cleanHost)}&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&series_id=${encodeURIComponent(cleanSeriesId)}`
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          if (isCancelled) return;
-          const episodes = data?.episodes;
-          if (episodes && typeof episodes === 'object') {
-            const seasonKeys = Object.keys(episodes);
-            if (seasonKeys.length > 0 && Array.isArray(episodes[seasonKeys[0]]) && episodes[seasonKeys[0]].length > 0) {
-              const ep1 = episodes[seasonKeys[0]][0];
-              const ext = ep1.container_extension || 'mp4';
-              const epUrl = `${baseHost}/series/${user}/${pass}/${ep1.id}.${ext}`;
-              seriesEp1Cache.current[cleanSeriesId] = epUrl;
-              playStream(getPlayableStreamUrl(epUrl));
-              return;
-            }
-          }
-          // Default real fallback episode from wordbus.top
-          const realFallbackUrl = `${baseHost}/series/${user}/${pass}/204829.mp4`;
-          playStream(getPlayableStreamUrl(realFallbackUrl));
-        })
-        .catch(() => {
-          if (!isCancelled) {
-            const realFallbackUrl = `${baseHost}/series/${user}/${pass}/204829.mp4`;
-            playStream(getPlayableStreamUrl(realFallbackUrl));
-          }
-        });
-    }
-
-    return () => {
-      isCancelled = true;
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, [heroSeries?.id, heroSeries?.streamUrl, heroIndex]);
-
-  // Sync mute state with user toggle
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
-
-  // Compact View state: after 10 seconds of spotlight
-  const isCompactView = timeRemaining <= 50;
 
   const displayedSeries = useMemo(() => {
     return filteredSeries.slice(0, displayLimit);
@@ -331,11 +118,15 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
     }
 
     if (!loaded) {
-      // Authentic episodes from the series using real stream endpoints (zero generic fallbacks)
       const cleanHost = (serverHost || 'http://wordbus.top').trim();
       const baseHost = cleanHost.startsWith('http') ? cleanHost : `http://${cleanHost}`;
-      const user = loginUser || 'rachelalcantara2';
-      const pass = loginPass || '18787429';
+      const user = loginUser;
+      const pass = loginPass;
+
+      if (!user || !pass) {
+        setEpisodesLoading(false);
+        return;
+      }
 
       const realEpisodes: Record<string, any[]> = {
         '1': [
@@ -447,232 +238,6 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
       {/* ================= RIGHT MAIN SCROLLABLE CONTENT ================= */}
       <div ref={contentRef} className="flex-1 overflow-y-auto flex flex-col h-full bg-[#080407]">
         
-        {/* Hero Featured Series Banner with 1-Min Video Preview (Sticky Top, Catalog Scrolls Behind) */}
-        {heroSeries && (
-          <div className="sticky top-0 z-30 w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.95)] border-b border-neutral-800/80">
-            {/* Background Video Player */}
-            <video
-              ref={videoRef}
-              playsInline
-              autoPlay
-              muted={isMuted}
-              loop
-              preload="auto"
-              onCanPlay={() => setVideoLoaded(true)}
-              onPlay={() => setVideoLoaded(true)}
-              onLoadedData={() => setVideoLoaded(true)}
-              onError={() => setVideoLoaded(false)}
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none scale-105"
-            />
-
-            {/* Poster Backdrop Fallback & Ambience */}
-            {heroSeries.posterUrl && (
-              <img
-                src={heroSeries.posterUrl}
-                alt={heroSeries.name}
-                className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${
-                  videoLoaded ? 'opacity-0 pointer-events-none' : 'opacity-40 blur-md scale-110'
-                }`}
-              />
-            )}
-
-            {/* Cinematic Gradient Overlays */}
-            <div
-              className={`absolute inset-0 bg-gradient-to-t from-[#080407] via-[#080407]/40 to-transparent z-10 pointer-events-none transition-opacity duration-700 ${
-                isCompactView ? 'opacity-0' : 'opacity-100'
-              }`}
-            />
-            <div
-              className={`absolute inset-0 bg-gradient-to-r from-[#080407] via-[#080407]/75 to-transparent z-10 pointer-events-none transition-opacity duration-700 ${
-                isCompactView ? 'opacity-0' : 'opacity-100'
-              }`}
-            />
-            <div
-              className={`absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/60 z-10 pointer-events-none transition-opacity duration-700 ${
-                isCompactView ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-
-            {/* Top-Right Controls: Navigation, Timer Display & Audio Mute Toggle */}
-            <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-1.5 sm:gap-2">
-              {/* Botão Voltar Série */}
-              <button
-                onClick={handlePrevHero}
-                className="h-9 w-9 rounded-xl bg-black/60 hover:bg-black/90 active:scale-95 backdrop-blur-md border border-neutral-700/80 text-neutral-300 hover:text-white transition flex items-center justify-center cursor-pointer shadow-lg shrink-0"
-                title="Série anterior"
-                aria-label="Série anterior"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {/* Mostrador de Tempo ao Lado do Som */}
-              <div
-                className="h-9 px-3 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md border border-neutral-700/80 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg shrink-0 select-none"
-                title={`Próxima série em ${timeRemaining} segundos`}
-              >
-                <Clock className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-                <span className="text-white font-mono tracking-wider font-extrabold">
-                  {timeRemaining}s
-                </span>
-              </div>
-
-              {/* Botão Avançar Série */}
-              <button
-                onClick={handleNextHero}
-                className="h-9 w-9 rounded-xl bg-black/60 hover:bg-black/90 active:scale-95 backdrop-blur-md border border-neutral-700/80 text-neutral-300 hover:text-white transition flex items-center justify-center cursor-pointer shadow-lg shrink-0"
-                title="Próxima série"
-                aria-label="Próxima série"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              {/* Botão de Áudio (Com Som / Sem Áudio) */}
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className="h-9 px-3.5 rounded-xl bg-black/60 hover:bg-black/90 backdrop-blur-md border border-neutral-700/80 text-white font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 shrink-0"
-                title={isMuted ? 'Ativar Áudio da Prévia' : 'Mutar Prévia'}
-              >
-                {isMuted ? (
-                  <>
-                    <VolumeX className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden sm:inline">Sem Áudio</span>
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    <span className="hidden sm:inline">Com Áudio</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Compact Mode Title */}
-            <div
-              className={`absolute top-4 left-6 md:left-12 z-20 transition-all duration-700 ease-in-out flex items-center gap-4 ${
-                isCompactView
-                  ? 'opacity-100 translate-y-0 scale-100'
-                  : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
-              }`}
-            >
-              <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-2xl">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                <h2 className="text-sm md:text-base font-black text-white tracking-wide truncate max-w-xs md:max-w-md">
-                  {heroSeries.name}
-                </h2>
-                {heroSeries.rating && (
-                  <span className="text-amber-400 text-xs font-bold flex items-center gap-0.5">
-                    <Star className="w-3 h-3 fill-amber-400" />
-                    {heroSeries.rating}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Compact Bottom Action Bar */}
-            <div
-              className={`absolute bottom-6 left-6 md:left-12 z-20 transition-all duration-700 ease-in-out ${
-                isCompactView
-                  ? 'opacity-100 translate-y-0 scale-100'
-                  : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
-              }`}
-            >
-              <button
-                onClick={() => handleOpenSeries(heroSeries)}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs md:text-sm uppercase tracking-wider transition shadow-2xl shadow-red-600/60 flex items-center gap-2.5 cursor-pointer border border-red-500/50 backdrop-blur-sm"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>VER EPISÓDIOS</span>
-              </button>
-            </div>
-
-            {/* Hero Full Content Container */}
-            <div
-              className={`relative z-20 h-full max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-8 transition-all duration-700 ease-in-out ${
-                isCompactView
-                  ? 'opacity-0 translate-y-4 scale-95 pointer-events-none'
-                  : 'opacity-100 translate-y-0 scale-100'
-              }`}
-            >
-              {/* Poster Card */}
-              <div className="hidden sm:block w-36 md:w-44 aspect-[2/3] rounded-2xl overflow-hidden shrink-0 shadow-[0_0_40px_rgba(220,38,38,0.4)] border-2 border-red-600/50 bg-neutral-900 group relative">
-                {heroSeries.posterUrl ? (
-                  <img
-                    src={heroSeries.posterUrl}
-                    alt={heroSeries.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-red-950 to-neutral-950">
-                    <Tv className="w-12 h-12 text-red-500 mb-2" />
-                    <span className="text-xs font-bold text-white line-clamp-2">
-                      {heroSeries.name}
-                    </span>
-                  </div>
-                )}
-                {videoLoaded && (
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm shadow-md">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    CENA
-                  </div>
-                )}
-              </div>
-
-              {/* Info details */}
-              <div className="max-w-2xl space-y-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-red-950/50">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    {selectedCategory === 'TODOS' ? 'PRÉVIA DO CATÁLOGO DE SÉRIES' : selectedCategory.toUpperCase()} · 1 MIN
-                  </span>
-
-                  {heroSeries.category && (
-                    <span className="text-xs text-neutral-400 font-medium">
-                      {heroSeries.category}
-                    </span>
-                  )}
-                  {heroSeries.year && (
-                    <>
-                      <span className="text-neutral-600">·</span>
-                      <span className="text-xs text-amber-400 font-bold">
-                        {heroSeries.year}
-                      </span>
-                    </>
-                  )}
-                  {heroSeries.rating && (
-                    <>
-                      <span className="text-neutral-600">·</span>
-                      <span className="flex items-center gap-1 text-xs text-amber-400 font-bold">
-                        <Star className="w-3 h-3 fill-amber-400" />
-                        {heroSeries.rating}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
-                  {heroSeries.name}
-                </h1>
-
-                {heroSeries.plot && (
-                  <p className="text-xs md:text-sm text-neutral-300 line-clamp-3 leading-relaxed max-w-xl drop-shadow-sm">
-                    {heroSeries.plot}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    onClick={() => handleOpenSeries(heroSeries)}
-                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-xs md:text-sm uppercase tracking-wider transition shadow-2xl shadow-red-600/50 flex items-center gap-2.5 cursor-pointer border border-red-500/50"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>VER EPISÓDIOS</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Catalog Grid Area */}
         <div className="p-6 md:p-8 space-y-6">
           {/* Top Controls: Dynamic Header & Search Bar */}
@@ -705,7 +270,24 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
           </div>
 
           {/* Series Grid */}
-          {filteredSeries.length === 0 ? (
+          {series.length === 0 ? (
+            <div className="p-16 text-center rounded-3xl bg-[#140c11] border border-neutral-800 space-y-4 max-w-md mx-auto my-12">
+              <Tv className="w-14 h-14 text-red-500 mx-auto" />
+              <h3 className="text-xl font-black text-white">Nenhum Usuário Conectado</h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Conecte um usuário válido para carregar 100% das séries disponíveis.
+              </p>
+              {onConnectUser && (
+                <button
+                  onClick={onConnectUser}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-red-600/30 flex items-center gap-2 mx-auto cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Conectar Usuário</span>
+                </button>
+              )}
+            </div>
+          ) : filteredSeries.length === 0 ? (
             <div className="p-16 text-center rounded-3xl bg-[#140c11] border border-neutral-800 space-y-3">
               <Tv className="w-12 h-12 text-neutral-600 mx-auto" />
               <p className="text-base font-bold text-neutral-300">Nenhuma série encontrada</p>
@@ -719,11 +301,7 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
                 {displayedSeries.map((s, idx) => (
                   <div
                     key={`${s.id}_${idx}`}
-                    onClick={() => {
-                      setHeroIndex(idx);
-                      setTimeRemaining(60);
-                      handleOpenSeries(s);
-                    }}
+                    onClick={() => handleOpenSeries(s)}
                     className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
                   >
                     {s.posterUrl ? (
@@ -763,24 +341,10 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setHeroIndex(idx);
-                              setTimeRemaining(60);
-                              if (contentRef.current) {
-                                contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-                              }
-                            }}
-                            className="p-1 rounded-full bg-black/70 hover:bg-neutral-800 text-neutral-300 hover:text-white transition border border-white/20"
-                            title="Ver Prévia de Fundo desta Série"
-                          >
-                            <Eye className="w-3 h-3 text-red-400" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
                               handleOpenSeries(s);
                             }}
                             className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
-                            title="Episódios"
+                            title="Ver Episódios"
                           >
                             <Play className="w-3 h-3 fill-white" />
                           </button>
@@ -873,7 +437,9 @@ export const SeriesScreen: React.FC<SeriesScreenProps> = ({
                     const baseHost = cleanHost.startsWith('http') ? cleanHost : `http://${cleanHost}`;
                     const epStreamUrl =
                       ep.stream_url ||
-                      `${baseHost}/series/${loginUser || 'rachelalcantara2'}/${loginPass || '18787429'}/${ep.id}.${ext}`;
+                      (loginUser && loginPass
+                        ? `${baseHost}/series/${encodeURIComponent(loginUser)}/${encodeURIComponent(loginPass)}/${ep.id}.${ext}`
+                        : '');
                     const epTitle = ep.title || `Episódio ${idx + 1}`;
 
                     return (

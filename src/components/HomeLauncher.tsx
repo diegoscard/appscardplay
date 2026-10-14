@@ -35,27 +35,36 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
   focusedCardIndex,
   setFocusedCardIndex,
   onNavigate,
+  onSwitchPlaylist,
 }) => {
+  const isConnected = Boolean(accountInfo?.username || channelsCount > 0);
+
   // Main 4 TV Tiles (Ao Vivo, Filmes, Séries, Configurações)
   const tiles = [
     {
       id: 'livetv',
       title: 'Ao Vivo',
-      subtext: `${channelsCount > 0 ? channelsCount.toLocaleString('pt-BR') : '0'} canais`,
+      subtext: isConnected
+        ? `${channelsCount.toLocaleString('pt-BR')} canais`
+        : 'Conectar usuário',
       destination: 'livetv' as const,
       icon: (isFocused: boolean) => <LiveTvLauncherIcon isFocused={isFocused} />,
     },
     {
       id: 'movies',
       title: 'Filmes',
-      subtext: `${moviesCount > 0 ? moviesCount.toLocaleString('pt-BR') : '0'} filmes VOD`,
+      subtext: isConnected
+        ? `${moviesCount.toLocaleString('pt-BR')} filmes VOD`
+        : 'Conectar usuário',
       destination: 'movies' as const,
       icon: (isFocused: boolean) => <MoviesLauncherIcon isFocused={isFocused} />,
     },
     {
       id: 'series',
       title: 'Séries',
-      subtext: `${seriesCount > 0 ? seriesCount.toLocaleString('pt-BR') : '0'} séries VOD`,
+      subtext: isConnected
+        ? `${seriesCount.toLocaleString('pt-BR')} séries VOD`
+        : 'Conectar usuário',
       destination: 'series' as const,
       icon: (isFocused: boolean) => <SeriesLauncherIcon isFocused={isFocused} />,
     },
@@ -161,8 +170,12 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
       {/* Footer Bottom Bar with Logged In User (Left) and Expiration Date (Right) matching screenshot */}
       <footer className="relative z-20 w-full px-6 md:px-12 pb-6 md:pb-8 flex items-center justify-between text-xs pointer-events-auto">
         {/* Bottom Left: Usuário Logado */}
-        <div className="flex items-center gap-3 bg-[#14060e]/85 hover:bg-[#1a0813] border border-neutral-800/80 hover:border-red-500/40 rounded-2xl px-4 py-2.5 backdrop-blur-md shadow-xl transition">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white shadow-md shadow-red-600/30">
+        <div
+          onClick={onSwitchPlaylist}
+          className="flex items-center gap-3 bg-[#14060e]/85 hover:bg-[#1a0813] border border-neutral-800/80 hover:border-red-500/40 rounded-2xl px-4 py-2.5 backdrop-blur-md shadow-xl transition cursor-pointer group"
+          title={accountInfo?.username ? 'Gerenciar Conta' : 'Clique para Conectar Usuário'}
+        >
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white shadow-md shadow-red-600/30 group-hover:scale-105 transition">
             <User className="w-4 h-4" />
           </div>
           <div className="flex flex-col text-left">
@@ -173,10 +186,14 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
               <span className="font-black text-white text-sm tracking-wide">
                 {accountInfo?.username || 'Desconectado'}
               </span>
-              {accountInfo?.username && (
+              {accountInfo?.username ? (
                 <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   {accountInfo.status || 'Ativo'}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded-full hover:bg-amber-900/60 transition">
+                  Conectar
                 </span>
               )}
             </div>
@@ -194,7 +211,7 @@ export const HomeLauncher: React.FC<HomeLauncherProps> = ({
             </span>
             <div className="flex items-center justify-end gap-1.5">
               <span className="font-black text-amber-300 text-sm tracking-wide font-mono">
-                {accountInfo?.expirationDate || 'Ilimitado'}
+                {accountInfo?.expirationDate || '--'}
               </span>
             </div>
           </div>
