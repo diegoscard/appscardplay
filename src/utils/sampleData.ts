@@ -36,7 +36,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_225331',
     name: '53 Domingos (2026)',
-    streamUrl: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
+    streamUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rL6GKuOAPUEGk0hqeY9sLRJTPWE.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -48,7 +48,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_223695',
     name: 'A Acusada (2026)',
-    streamUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/yRf0OrswYzoLnjXLpTLsmRUVtd.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -60,7 +60,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_308422',
     name: 'A Caixa Azul (2026)',
-    streamUrl: 'https://playertest.longtailvideo.com/adaptive/elephants_dream/elephants_dream.m3u8',
+    streamUrl: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/Ao8YIks0or4845Z1lXbINz7tMh8.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',
@@ -72,7 +72,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_222900',
     name: 'A Cela dos Milagres (2025)',
-    streamUrl: 'https://cdn.jwplayer.com/manifests/pvh1238p.m3u8',
+    streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/xaloioubOPQOFaERBPxLHnONyeJ.jpg',
     category: 'Lançamentos (2026)',
     year: '2025',
@@ -84,7 +84,7 @@ export const DEFAULT_SAMPLE_MOVIES: VodMovie[] = [
   {
     id: 'vod_308424',
     name: 'A Colega Perfeita (2026)',
-    streamUrl: 'https://bitdash-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e88-8b40-76683be01b4e.m3u8',
+    streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
     posterUrl: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/36zoDJG52EkHnMm60M9BdLw8Siv.jpg',
     category: 'Lançamentos (2026)',
     year: '2026',

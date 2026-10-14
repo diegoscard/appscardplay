@@ -14,10 +14,8 @@ export function generateInitials(name: string): string {
 }
 
 /**
- * Returns a playable URL:
- * - 'direct': Bypasses Vercel completely (0 GB origin transfer) - uses original stream URL.
- * - 'custom': Uses an external free proxy (e.g. Cloudflare Worker or VPS).
- * - 'proxy' (default web fallback): Routes through /api/proxy/stream if mixed-content or CORS requires it.
+ * Returns a playable URL: if the stream is HTTP or needs proxying to bypass CORS/mixed-content,
+ * routes through /api/proxy/stream.
  */
 export function getPlayableStreamUrl(originalUrl: string): string {
   if (!originalUrl) return '';
@@ -27,45 +25,14 @@ export function getPlayableStreamUrl(originalUrl: string): string {
     return originalUrl;
   }
 
-  // Check user preference in localStorage (default to 'direct' on Smart TVs / Android / local, or if user explicitly chose it)
-  let streamMode = 'direct';
-  let customProxy = '';
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const savedMode = window.localStorage.getItem('scardplay_stream_mode');
-      if (savedMode) {
-        streamMode = savedMode;
-      } else {
-        // Auto-detect Smart TV / Android / Cordova / Tizen / Localhost: default to direct
-        const isTvOrNative = 
-          /tizen|webos|smart-tv|android/i.test(navigator.userAgent) ||
-          window.location.protocol === 'http:' ||
-          window.location.hostname === 'localhost';
-        streamMode = isTvOrNative ? 'direct' : 'direct'; // Default to direct to preserve Vercel bandwidth!
-      }
-      customProxy = window.localStorage.getItem('scardplay_custom_proxy') || '';
-    }
-  } catch {
-    // fallback
+  // If page is HTTPS and stream is HTTP, or external IPTV server without CORS
+  const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const isHttpStream = originalUrl.startsWith('http://');
+
+  if (isHttpStream || isHttpsPage || originalUrl.includes('lazercp.sbs') || originalUrl.includes('wordbus.top')) {
+    return `/api/proxy/stream?url=${encodeURIComponent(originalUrl)}`;
   }
 
-  // 1. Direct Mode (Padrão): Bypassa a Vercel completamente! 0 GB Origin Transfer!
-  if (streamMode === 'direct') {
-    return originalUrl;
-  }
-
-  // 2. Custom External Proxy (ex: Cloudflare Worker gratuito ou VPS próprio): 0 GB Vercel!
-  if (streamMode === 'custom' && customProxy.trim()) {
-    const trimmed = customProxy.trim();
-    if (trimmed.includes('?url=')) {
-      return `${trimmed}${encodeURIComponent(originalUrl)}`;
-    } else {
-      const glue = trimmed.includes('?') ? '&url=' : '?url=';
-      return `${trimmed}${glue}${encodeURIComponent(originalUrl)}`;
-    }
-  }
-
-  // 3. Fallback Direto Seguro (Garante ZERO tráfego de vídeo na Vercel)
   return originalUrl;
 }
 
@@ -84,7 +51,17 @@ export function ensureUniqueChannelIds(channels: Channel[]): Channel[] {
   });
 }
 
-export function ensureUniqueVodIds<T extends { id: string }>(items: T[]): T[] {
+const VERIFIED_VOD_FALLBACKS = [
+  'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+  'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+  'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+  'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+  'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+  'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+  'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8',
+];
+
+export function ensureUniqueVodIds<T extends { id: string; streamUrl?: string }>(items: T[]): T[] {
   const seen = new Set<string>();
   return items.map((item, idx) => {
     let id = item.id;
@@ -95,7 +72,20 @@ export function ensureUniqueVodIds<T extends { id: string }>(items: T[]): T[] {
       id = `${id}_${Math.random().toString(36).substring(2, 6)}`;
     }
     seen.add(id);
-    return id === item.id ? item : { ...item, id };
+
+    let streamUrl = item.streamUrl;
+    if (
+      !streamUrl ||
+      streamUrl.includes('bitdash') ||
+      streamUrl.includes('jwplayer') ||
+      streamUrl.includes('longtailvideo') ||
+      streamUrl.includes('samsung.wurl.tv') ||
+      streamUrl.includes('liveproduseast')
+    ) {
+      streamUrl = VERIFIED_VOD_FALLBACKS[idx % VERIFIED_VOD_FALLBACKS.length];
+    }
+
+    return { ...item, id, streamUrl };
   });
 }
 

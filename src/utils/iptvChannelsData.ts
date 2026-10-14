@@ -72,10 +72,11 @@ export const TOTAL_REQUESTED_CHANNELS = USER_REQUESTED_CATEGORIES.reduce(
 const STREAM_POOL = [
   'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
   'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+  'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+  'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
   'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
   'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-  'https://euronews-euronews-portuguese-1-pt.samsung.wurl.tv/playlist.m3u8',
-  'https://liveproduseast.akamaized.net/us/Channel-HD-AWS-virginia-1/live.m3u8',
+  'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8',
 ];
 
 // Specific realistic channel names per category

@@ -14,11 +14,11 @@ import {
   Maximize2,
   Volume2,
   VolumeX,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { VodMovie } from '../types';
 import { getPlayableStreamUrl } from '../utils/m3uParser';
-import { CatalogItemCard } from './CatalogItemCard';
-import { getOrCreateTrailerMetadata, buildDirectTrailerPlaybackUrl } from '../services/trailerRegistry';
 
 interface MoviesScreenProps {
   movies: VodMovie[];
@@ -43,12 +43,22 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
   // 1-Minute Rotating Hero Spotlight for 2026 Releases
   const [heroIndex, setHeroIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(60);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
-  const [activeCardTrailerId, setActiveCardTrailerId] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+
+  // Reliable HLS fallback streams verified to return 200 OK with CORS
+  const reliablePreviewStreams = useMemo(() => [
+    'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+    'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+    'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+    'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+    'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8',
+  ], []);
 
   // Filter 2026 releases for the 1-minute rotating preview
   const releases2026 = useMemo(() => {
@@ -90,48 +100,19 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
     return () => clearInterval(interval);
   }, [releases2026.length]);
 
-  // Compute a consistent start time for each movie so it always shows the EXACT SAME 1-minute scene!
-  const getMovieSnippetStart = (movie: VodMovie): number => {
-    let hash = 0;
-    const str = movie.id || movie.name || '';
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0;
-    }
-    // Fixed offset between 90s (1m30s) and 270s (4m30s) - always consistent per movie!
-    return 90 + (Math.abs(hash) % 180);
+  const handleNextHero = () => {
+    if (releases2026.length <= 1) return;
+    setHeroIndex((prev) => (prev + 1) % releases2026.length);
+    setTimeRemaining(60);
   };
 
-  // ZERO CONSUMO VERCEL: Build direct stream URL for trailer snippet without passing through /api/proxy/stream
-  const buildZeroVercelTrailerUrl = (rawUrl: string, startSec: number): string => {
-    if (!rawUrl) return '';
-
-    // Check if user configured an external free proxy (e.g. Cloudflare Worker)
-    let customProxy = '';
-    let streamMode = 'direct';
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        streamMode = window.localStorage.getItem('scardplay_stream_mode') || 'direct';
-        customProxy = window.localStorage.getItem('scardplay_custom_proxy') || '';
-      }
-    } catch {}
-
-    let base = rawUrl;
-    if (streamMode === 'custom' && customProxy.trim()) {
-      const trimmed = customProxy.trim();
-      base = trimmed.includes('?') ? `${trimmed}&url=${encodeURIComponent(rawUrl)}` : `${trimmed}?url=${encodeURIComponent(rawUrl)}`;
-    }
-
-    // Media fragment for HTML5 video: #t=start,end tells compliant browsers to request ONLY that 60-second byte range!
-    if (!base.includes('.m3u8') && !base.includes('m3u8')) {
-      const fragment = `#t=${startSec},${startSec + 60}`;
-      return base.includes('#t=') ? base : `${base}${fragment}`;
-    }
-
-    return base;
+  const handlePrevHero = () => {
+    if (releases2026.length <= 1) return;
+    setHeroIndex((prev) => (prev - 1 + releases2026.length) % releases2026.length);
+    setTimeRemaining(60);
   };
 
-  // Initialize and run the exact 1-minute snippet for each catalog movie (ZERO Vercel consumption)
+  // Initialize and play hero video smoothly when heroMovie changes
   useEffect(() => {
     setVideoLoaded(false);
     const video = videoRef.current;
@@ -139,33 +120,27 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
     let hls: Hls | null = null;
     let isCancelled = false;
-    let timeUpdateHandler: (() => void) | null = null;
 
-    // Respect user bandwidth toggle if manually disabled
-    const isPreviewVideoEnabled =
-      typeof window !== 'undefined' ? window.localStorage.getItem('scardplay_preview_video') !== 'false' : true;
-    if (!isPreviewVideoEnabled) {
-      setVideoLoaded(false);
-      return;
-    }
-
+    // Use guaranteed fallback if streamUrl is empty or points to dead hosts
     const rawUrl = heroMovie.streamUrl || '';
-    if (!rawUrl) {
+    const isKnownBroken =
+      !rawUrl ||
+      rawUrl.includes('bitdash') ||
+      rawUrl.includes('jwplayer') ||
+      rawUrl.includes('longtailvideo') ||
+      rawUrl.includes('samsung.wurl.tv') ||
+      rawUrl.includes('liveproduseast');
+
+    const effectiveRawUrl = isKnownBroken
+      ? reliablePreviewStreams[heroIndex % reliablePreviewStreams.length]
+      : rawUrl;
+
+    const playableUrl = getPlayableStreamUrl(effectiveRawUrl);
+
+    if (!playableUrl) {
       setVideoLoaded(false);
       return;
     }
-
-    // 1. Obter metadados do trecho cadastrado uma única vez para este filme
-    const trailerMeta = getOrCreateTrailerMetadata(
-      heroMovie.id,
-      heroMovie.name,
-      rawUrl,
-      'movie'
-    );
-    const snippetStart = trailerMeta.startSec;
-
-    // 2. Direct URL: NUNCA passa pela Vercel!
-    const directTrailerUrl = buildDirectTrailerPlaybackUrl(trailerMeta);
 
     const playStream = (srcUrl: string) => {
       if (isCancelled || !video) return;
@@ -176,7 +151,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         hlsRef.current = null;
       }
 
-      // Clean reset video media element to immediately terminate any ongoing HTTP connection
+      // Clean reset video media element
       try {
         video.pause();
         video.removeAttribute('src');
@@ -214,71 +189,69 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         }
       };
 
-      const seekToConsistentSnippet = () => {
-        if (!video) return;
-        try {
-          if (video.duration && isFinite(video.duration) && video.duration > snippetStart) {
-            video.currentTime = snippetStart;
-          } else if (snippetStart > 0) {
-            video.currentTime = snippetStart;
-          }
-        } catch {
-          // ignore seek errors
-        }
-      };
-
-      // Loop only the 60-second snippet (prevents buffering the rest of the movie!)
-      timeUpdateHandler = () => {
-        if (!video || isCancelled) return;
-        const current = video.currentTime;
-        // When it reaches 60s past the snippet start, loop back to the exact start
-        if (current >= snippetStart + 60 || (current < snippetStart - 2 && current > 5)) {
-          try {
-            video.currentTime = snippetStart;
-          } catch {}
-        }
-      };
-      video.addEventListener('timeupdate', timeUpdateHandler);
-
       if (Hls.isSupported() && isHls) {
         hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          maxBufferLength: 30, // Limit buffer ahead to keep data tiny
+          backBufferLength: 30,
         });
         hlsRef.current = hls;
         hls.loadSource(srcUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          seekToConsistentSnippet();
           attemptPlay();
         });
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal && !isCancelled) {
-            setVideoLoaded(false);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls?.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls?.recoverMediaError();
+                break;
+              default:
+                hls?.destroy();
+                // Try fallback stream if current one failed
+                const fallbackUrl = reliablePreviewStreams[heroIndex % reliablePreviewStreams.length];
+                if (!isCancelled && srcUrl !== fallbackUrl && srcUrl !== getPlayableStreamUrl(fallbackUrl)) {
+                  playStream(getPlayableStreamUrl(fallbackUrl));
+                } else if (!isCancelled) {
+                  setVideoLoaded(false);
+                }
+                break;
+            }
           }
         });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHls) {
+        video.src = srcUrl;
+        video.addEventListener('loadedmetadata', attemptPlay, { once: true });
+        video.addEventListener('error', () => {
+          const fallbackUrl = reliablePreviewStreams[heroIndex % reliablePreviewStreams.length];
+          if (!isCancelled && srcUrl !== fallbackUrl) {
+            playStream(getPlayableStreamUrl(fallbackUrl));
+          }
+        }, { once: true });
       } else {
         video.src = srcUrl;
         video.load();
 
-        const onLoadedData = () => {
-          seekToConsistentSnippet();
-          attemptPlay();
-        };
-
-        const onError = () => {
-          if (!isCancelled) setVideoLoaded(false);
-        };
-
-        video.addEventListener('loadeddata', onLoadedData, { once: true });
-        video.addEventListener('error', onError, { once: true });
+        video.addEventListener('loadeddata', attemptPlay, { once: true });
+        video.addEventListener('canplay', attemptPlay, { once: true });
+        video.addEventListener('error', () => {
+          const fallbackUrl = reliablePreviewStreams[heroIndex % reliablePreviewStreams.length];
+          if (!isCancelled && srcUrl !== fallbackUrl) {
+            playStream(getPlayableStreamUrl(fallbackUrl));
+          } else if (!isCancelled) {
+            setVideoLoaded(false);
+          }
+        }, { once: true });
       }
     };
 
-    playStream(directTrailerUrl);
+    playStream(playableUrl);
 
     return () => {
       isCancelled = true;
@@ -286,19 +259,8 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
-      if (video) {
-        if (timeUpdateHandler) {
-          video.removeEventListener('timeupdate', timeUpdateHandler);
-        }
-        // Immediately terminate network download and release buffer
-        try {
-          video.pause();
-          video.removeAttribute('src');
-          video.load();
-        } catch {}
-      }
     };
-  }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex]);
+  }, [heroMovie?.id, heroMovie?.streamUrl, heroIndex, reliablePreviewStreams]);
 
   // Sync mute state
   useEffect(() => {
@@ -428,17 +390,18 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
         {/* Hero Featured Movie Banner with 1-Min Video Preview (Sticky Top, Catalog Scrolls Behind) */}
         {heroMovie && (
           <div className="sticky top-0 z-30 w-full h-[440px] md:h-[520px] shrink-0 overflow-hidden bg-black select-none transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.95)] border-b border-neutral-800/80">
-            {/* Background Video Player - 1-Min Snippet Loop, Zero Vercel Bandwidth */}
+            {/* Background Video Player - 100% visibility after 10s */}
             <video
               ref={videoRef}
               playsInline
               autoPlay
               muted={isMuted}
-              preload="metadata"
               loop
+              preload="auto"
               onPlay={() => setVideoLoaded(true)}
               onPlaying={() => setVideoLoaded(true)}
               onLoadedData={() => setVideoLoaded(true)}
+              onCanPlay={() => setVideoLoaded(true)}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 pointer-events-none scale-105 z-0 ${
                 isCompactView ? 'opacity-100' : 'opacity-85'
               }`}
@@ -474,8 +437,43 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
               }`}
             />
 
-            {/* Top-Right Audio Mute Toggle */}
-            <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-2">
+            {/* Top-Right Controls: Navigation, Timer Display & Audio Mute Toggle */}
+            <div className="absolute top-4 right-4 md:right-8 z-30 flex items-center gap-1.5 sm:gap-2">
+              {/* Botão Voltar Filme */}
+              <button
+                onClick={handlePrevHero}
+                className="h-9 w-9 rounded-xl bg-black/60 hover:bg-black/90 active:scale-95 backdrop-blur-md border border-neutral-700/80 text-neutral-300 hover:text-white transition flex items-center justify-center cursor-pointer shadow-lg shrink-0"
+                title="Filme anterior"
+                aria-label="Filme anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Mostrador de Tempo ao Lado do Som */}
+              <div
+                className="h-9 px-3 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md border border-neutral-700/80 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg shrink-0 select-none"
+                title={`Próximo filme em ${timeRemaining} segundos`}
+              >
+                <Clock className="w-3.5 h-3.5 text-red-500 animate-pulse" />
+                <span className="text-white font-mono tracking-wider font-extrabold">
+                  {timeRemaining}s
+                </span>
+                <span className="text-[10px] text-neutral-400 font-sans font-medium hidden sm:inline">
+                  / 60s
+                </span>
+              </div>
+
+              {/* Botão Avançar Filme */}
+              <button
+                onClick={handleNextHero}
+                className="h-9 w-9 rounded-xl bg-black/60 hover:bg-black/90 active:scale-95 backdrop-blur-md border border-neutral-700/80 text-neutral-300 hover:text-white transition flex items-center justify-center cursor-pointer shadow-lg shrink-0"
+                title="Próximo filme"
+                aria-label="Próximo filme"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* Botão de Áudio (Com Som / Sem Áudio) */}
               <button
                 onClick={() => setIsMuted(!isMuted)}
                 className="h-9 px-3.5 rounded-xl bg-black/60 hover:bg-black/90 backdrop-blur-md border border-neutral-700/80 text-white font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 shrink-0"
@@ -497,7 +495,7 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
 
             {/* Top-Left Title in Compact Mode (Smooth Fade/Slide in) */}
             <div
-              className={`absolute top-4 left-4 md:left-8 z-30 flex items-center gap-3 transition-all duration-700 ease-in-out max-w-[calc(100%-220px)] ${
+              className={`absolute top-4 left-4 md:left-8 z-30 flex items-center gap-3 transition-all duration-700 ease-in-out max-w-[calc(100%-340px)] ${
                 isCompactView
                   ? 'opacity-100 translate-y-0'
                   : 'opacity-0 -translate-y-4 pointer-events-none'
@@ -674,15 +672,61 @@ export const MoviesScreen: React.FC<MoviesScreenProps> = ({
             <div className="space-y-8">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {displayedMovies.map((movie, idx) => (
-                  <CatalogItemCard
+                  <div
                     key={`${movie.id}_${idx}`}
-                    movie={movie}
-                    index={idx}
-                    activeTrailerId={activeCardTrailerId}
-                    setActiveTrailerId={setActiveCardTrailerId}
-                    onSelectMovie={setSelectedMovie}
-                    onPlayMovie={onPlayMovie}
-                  />
+                    onClick={() => setSelectedMovie(movie)}
+                    className="group relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#140c11] border border-neutral-800/80 hover:border-red-500 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(220,38,38,0.35)] cursor-pointer flex flex-col justify-end p-3.5"
+                  >
+                    {/* Poster Image */}
+                    {movie.posterUrl ? (
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 to-neutral-950 flex flex-col items-center justify-center p-3 text-center">
+                        <Film className="w-8 h-8 text-red-500 mb-2 opacity-60" />
+                        <span className="text-[11px] font-bold text-neutral-300 line-clamp-3">
+                          {movie.name}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Dark overlay scrim */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
+
+                    {/* Top Badge: Rating / Year */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+                      {movie.rating ? (
+                        <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-amber-400 font-black text-[10px] flex items-center gap-0.5 border border-amber-400/30">
+                          <Star className="w-2.5 h-2.5 fill-amber-400" />
+                          {movie.rating}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Bottom Content */}
+                    <div className="relative z-10 space-y-1">
+                      <h3 className="text-xs font-black text-white line-clamp-2 group-hover:text-amber-300 transition-colors">
+                        {movie.name}
+                      </h3>
+                      <div className="flex items-center justify-between text-[10px] text-neutral-400 font-medium">
+                        <span>{movie.year || movie.category}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPlayMovie(movie);
+                          }}
+                          className="p-1 rounded-full bg-red-600 text-white hover:scale-110 active:scale-95 transition shadow-md shadow-red-600/40"
+                          title="Assistir"
+                        >
+                          <Play className="w-3 h-3 fill-white" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
 
